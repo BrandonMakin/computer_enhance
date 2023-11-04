@@ -29,7 +29,7 @@ with open("listing_0039_more_movs", "rb") as file:
             if w == 0: move a byte
             if w == 1: to move a word (2 bytes)
             '''
-            w = byte >> 0 & 1
+            w = byte & 1
 
             # second bit
             byte_2 = next()
@@ -42,9 +42,6 @@ with open("listing_0039_more_movs", "rb") as file:
 
             if mod == 0b11: # register mode
                 destination = registers[w][rm] # set destination to register specified by rm
-                if (d): # if d: swap source and destination
-                    source, destination = destination, source                
-                print(f"mov {destination}, {source}")
             else: # memory mode
                 address = ""
                 if mod == 0b00 and rm == 0b110: # direct address
@@ -65,9 +62,7 @@ with open("listing_0039_more_movs", "rb") as file:
                         case 5:
                             address = "di"
                         case 6:
-                            if mod == 0b00:
-                                address = "???"
-                            else: address = "bp"
+                            address = "bp"
                         case 7:
                             address = "bx"
                     
@@ -82,10 +77,10 @@ with open("listing_0039_more_movs", "rb") as file:
                 
                 destination = f"[{address}]"
 
-                if (d): # if d: swap source and destination
-                    source, destination = destination, source
+            if (d): # if d: swap source and destination
+                source, destination = destination, source
 
-                print(f"mov {destination}, {source}")
+            print(f"mov {destination}, {source}")
 
         # MOV (immediate to register)
         elif 0b1011 == byte >> 4:
