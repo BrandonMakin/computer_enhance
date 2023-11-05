@@ -23,25 +23,25 @@ class Mode:
     MEMORY_16_BIT_DISPLACEMET                   = 0b10
     REGISTER                                    = 0b11
 
-global data
+global file_data
 global idx
 idx = 0
 
 with open("listing_0041_add_sub_cmp_jnz", "rb") as file:
-    data = bytearray(file.read())
+    file_data = bytearray(file.read())
 
 def next(signed = False):
     global idx
-    if signed and data[idx] > 128:
-        result = 256 - data[idx]
+    if signed and file_data[idx] > 128:
+        result = 256 - file_data[idx]
     else:
-        result = data[idx]
+        result = file_data[idx]
     idx += 1
     return result
 
 def next_16(): 
     global idx
-    result = int.from_bytes(data[idx:idx+2], 'little')
+    result = int.from_bytes(file_data[idx:idx+2], 'little')
     idx += 2
     return result
 
@@ -72,7 +72,7 @@ def rm_to_text(mod, rm):
 
 print("bits 16\n")
 
-while (idx < len(data)):
+while (idx < len(file_data)):
     byte = next()
     # MOV (register/memory to/from register)
     if 0b100010 == byte >> 2:
@@ -227,7 +227,23 @@ while (idx < len(data)):
             immediate_size = "word " if w else "byte "
 
         print(f"{operation} {immediate_size}{rm_as_text}, {immediate_value}")
+    
+    elif byte >> 6 == 0 and byte >> 1 & 0b11 == 0b10: # add/sub/cmp: immediate to accumulator
+        operation = ""
+        match (byte & 0b00111000) >> 3:
+            case 0b000:
+                operation = "add"
+            case 0b101:
+                operation = "sub"
+            case 0b111:
+                operation = "cmp"
         
+        w = byte & 1
+        immediate_value = next_16() if w else next()
+        register = "ax" if w else "al"
+
+        print(f"{operation} {register}, {immediate_value}")
+
     else:
         print("unexpected data (unknown instruction, or an instruction was longer than expected); exiting")
         exit(1)
