@@ -33,7 +33,7 @@ with open("listing_0041_add_sub_cmp_jnz", "rb") as file:
 def next(signed = False):
     global idx
     if signed and file_data[idx] > 128:
-        result = 256 - file_data[idx]
+        result = file_data[idx] - 256
     else:
         result = file_data[idx]
     idx += 1
@@ -244,6 +244,36 @@ while (idx < len(file_data)):
 
         print(f"{operation} {register}, {immediate_value}")
 
+    elif byte == 0b01110100: #JE/JZ = Jump on equal/zero
+        print (f"JE/JZ ; {next(signed=True)}")
+    elif byte == 0b01111100: #JL/JNGE = Jump on less/not greater or equal
+        print(f"JL/JNGE ; {next(signed=True)}")
+    elif byte == 0b01111110: #JLE/JNG = Jump on less or equal/not greater
+        print(f"JLE/JNG ; {next(signed=True)}")
+    elif byte == 0b01110010: #JB/JNAE = Jump on below/not above or equal
+        print(f"JB/JNAE ; {next(signed=True)}")
+    elif byte == 0b01110110: #JBE/JNA = Jump on below or equal/not above
+        print(f"JBE/JNA ; {next(signed=True)}")
+    elif byte == 0b01111010: #JP/JPE = Jump on parity/parity even
+        print(f"JP/JPE ; {next(signed=True)}")
+    elif byte == 0b01110000: #JO = Jump on overflow
+        print(f"JO ; {next(signed=True)}")
+    elif byte == 0b01111000: #JS = Jump on sign
+        print(f"JS ; {next(signed=True)}")
+    elif byte == 0b01110101: #JNE/JNZ = Jump on not equal/not zero
+        print(f"JNE/JNZ ; {next(signed=True)}")
+    elif byte == 0b01111101: #JNL/JGE = Jump on not less/greater or equal
+        print(f"JNL/JGE ; {next(signed=True)}")
+    elif byte == 0b01111111: #JNLE/JG = Jump on not less or equal/greater
+        print(f"JNLE/JG ; {next(signed=True)}")
+    elif byte == 0b01110011: #JNB/JAE = Jump on not below/above or equal
+        print(f"JNB/JAE ; {next(signed=True)}")
+    elif byte == 0b01110111: #JNBE/JA = Jump on not below or equal/above
+        print(f"JNBE/JA ; {next(signed=True)}")
+    elif byte == 0b01111011: #JNP/JPO = Jump on not parity/parity odd
+        print(f"JNP/JPO ; {next(signed=True)}")
+    elif byte == 0b01110001: #JNO = Jump on not overflow
+        print(f"JNO ; {next(signed=True)}")
     else:
         print("unexpected data (unknown instruction, or an instruction was longer than expected); exiting")
         exit(1)
