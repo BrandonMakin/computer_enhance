@@ -45,35 +45,21 @@ with open("listing_0040_challenge_movs", "rb") as file:
             if mod == 0b11: # register mode
                 destination = registers[w][rm] # set destination to register specified by rm
             else: # memory mode
-                address = ""
-                if mod == 0b00 and rm == 0b110: # direct address
-                    address = str(next_16())
-                else:
-                    # effective address calculation
-                    match rm:
-                        case 0:
-                            address = "bx + si"
-                        case 1:
-                            address = "bx + di"
-                        case 2:
-                            address = "bp + si"
-                        case 3:
-                            address = "bp + di"
-                        case 4:
-                            address = "si"
-                        case 5:
-                            address = "di"
-                        case 6:
-                            address = "bp"
-                        case 7:
-                            address = "bx"
-                    
-                    if mod != 0b00:
-                        if mod == 0b01:
-                            offset = next()
-                        if mod == 0b10:
-                            offset = next_16()
-                            
+                address = rm_effective_address_calculation[rm] # effective address calculation
+                match mod:
+                    case 0b00:
+                        if rm == 0b110: # direct address
+                            address = str(next_16())
+                    case 0b01:
+                        sign = "+"
+                        offset = next()
+                        if offset > 128:
+                            offset = 256 - offset
+                            sign = "-"
+                        if offset != 0:
+                            address += f" {sign} {offset}"
+                    case 0b10:
+                        offset = next_16()
                         if offset != 0:
                             address += f" + {offset}"
                 
@@ -127,6 +113,16 @@ with open("listing_0040_challenge_movs", "rb") as file:
                 address = address + f" + {offset}"
             
             print(f"mov [{address}], {immediate_value}")
+
+        elif 0b101000 == byte >> 2: # memory to accumulator / accumulator to memory
+            to_memory = byte >> 1 & 1
+            w = byte & 1
+
+            memory_address = next_16() if w else next()
+            if to_memory: # accumulator to memory
+                print(f"mov [{memory_address}], ax")
+            else: # memory to accumulator
+                print(f"mov ax, [{memory_address}]")
 
         else:
             print("unexpected data (unknown instruction, or an instruction was longer than expected); exiting")
