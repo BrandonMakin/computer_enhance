@@ -48,32 +48,34 @@ FILE *file;
 
 u8 next_8()
 {
-    u8 byte = fgetc(file);
-    if (byte == (u8)EOF)
-        {
-            puts("Uh oh, there are less bytes than expected.");
-            exit(1);
-        }
-    return byte;
+    u8 result;
+    if (fread(&result, 1, 1, file) == 0)
+    {
+        puts("(next_8) Uh oh, there are less bytes than expected.");
+        exit(1);
+    }
+    
+    return result;
 }
 
 i8 next_8_signed()
 {
-    i8 byte = fgetc(file);
-    if (byte == EOF)
-        {
-            puts("Uh oh, there are less bytes than expected.");
-            exit(1);
-        }
-    return byte;
+    i8 result;
+    if (fread(&result, 1, 1, file) == 0)
+    {
+        puts("(next_8) Uh oh, there are less bytes than expected.");
+        exit(1);
+    }
+    
+    return result;
 }
 
 u16 next_16()
 {
     u16 result;
-    if (fread(&result, 2, 1, file) != 0)
+    if (fread(&result, 2, 1, file) == 0)
     {
-        puts("Uh oh, there are less bytes than expected.");
+        puts("(next_16) Uh oh, there are less bytes than expected.");
         exit(1);
     }
     
@@ -83,43 +85,41 @@ u16 next_16()
 void rm_to_text(char *text, u8 mod, u8 rm, u8 w)
 {
     // memset(arr, 0, sizeof arr);
+    char *eac = rm_effective_address_calculation[rm];
     switch (mod)
     {
         case MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS:
+        {
             if (rm == 0b110) // direct address. 16-bit displacement to follow.
                 sprintf(text, "[%i]", next_16());
             else
-                strcpy(text, rm_effective_address_calculation[rm]);
+                sprintf(text, "[%s]", eac);
             break;
+        }
         case MEMORY_8_BIT_DISPLACEMENT:
+        {
+            i8 offset = next_8_signed();
+            if (offset == 0)
+                sprintf(text, "[%s]", eac);
+            else if (offset < 0)
+                sprintf(text, "[%s - %i]", eac, offset);
+            else
+                sprintf(text, "[%s + %i]", eac, offset);
             break;
+        }
         case MEMORY_16_BIT_DISPLACEMET:
+        {
+            u16 offset = next_16();
+            if (offset != 0)
+                sprintf(text, "[%s + %i]", eac, offset);
             break;
+        }
         case REGISTER:
+        {
             strcpy(text, registers[w][rm]);  
+            break;
+        }
     }
-
-    //     // case Mode.MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS:
-    //     //     if rm == 0b110: // direct address. 16-bit displacement to follow.
-    //     //         text = str(next_16())
-    //     // case Mode.MEMORY_8_BIT_DISPLACEMENT:
-    //     //     offset = next(signed=True) // get next byte as a signed int8
-    //     //     if offset < 0:
-    //     //         text = f"{text} - {offset}"
-    //     //     elif offset > 0:
-    //     //         text = f"{text} + {offset}"
-    //     // case Mode.MEMORY_16_BIT_DISPLACEMET:
-    //     //     offset = next_16()
-    //     //     if offset != 0:
-    //     //         text = f"{text} + {offset}"
-    //     // case Mode.REGISTER:
-    //     //     text = registers[w][rm] // set destination to register specified by rm
-    // }
-    // // add brackets to rm for any memory mode
-    // if (mod != Mode.REGISTER):
-    //     text = "[" + text + "]"
-    
-    // return text
 }
 
 void decompile(u8 byte)
@@ -144,10 +144,8 @@ void decompile(u8 byte)
         u8 rm = rm_from(byte_2);
 
         char *reg_text = registers[w][reg];
-        char rm_text[32] = {'\0'};
+        char rm_text[32];
         rm_to_text(rm_text, mod, rm, w);
-
-        // destination = f"[{address}]"
 
         if (d)
             printf("mov %s, %s\n", reg_text, rm_text);
@@ -160,10 +158,49 @@ void decompile(u8 byte)
     {
         u8 w = byte >> 3 & 1;
         u8 reg = byte & 0b111;
-        u8 immediate_value = next_8(); // least significant byte
+        u16 immediate_value = next_8(); // least significant byte
         if (w)
             immediate_value += next_8() * 0x100; // most significant byte (only used for 2-byte registers)
         printf("mov %s, %i\n", registers[w][reg], immediate_value);
+    }
+
+    // MOV (immediate to register/memory)
+    else if (0b1100011 == byte >> 1)
+    {
+        puts("MOV (immediate to register/memory) is not implemented yet.");
+        // u8 w = byte & 1
+        // u8 byte_2 = next_8()
+        // u8 mod = byte_2 >> 6
+        // u8 rm = byte_2 & 0b111
+
+        // address = rm_effective_address_calculation[rm]
+        // offset = 0 // won't work if there is a defined offset equal to 0, but can that ever happen?
+
+        // match mod:
+        //     case Mode.MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS:
+        //         if rm == 0b110: # direct address. 16-bit displacement to follow.
+        //             address = str(next_16())
+        //     case Mode.MEMORY_8_BIT_DISPLACEMENT:
+        //         offset = next()
+        //     case Mode.MEMORY_16_BIT_DISPLACEMET:
+        //         offset = next_16()
+        //     case Mode.REGISTER:
+        //         print("If this text appears, IDK why MOV (immediate to register/memory) is being called in register mode, but apparently it is.")
+        //         print("Or I'm really misunderstanding something.")
+        //         print("Because it seems like the assembly should just assemble to MOV (immediate to register) instead.")
+        //         print("Let's bail before things break any more.")
+        //         exit(1)
+        
+        // immediate_value = ""
+        // if w:
+        //     immediate_value = f"word {next_16()}"
+        // else:
+        //     immediate_value = f"byte {next()}"
+
+        // if (offset != 0):
+        //     address = address + f" + {offset}"
+        
+        // print(f"mov [{address}], {immediate_value}")
     }
 
     else
@@ -186,10 +223,12 @@ int main(void)
     }
 
     u8 byte;
-    while ((byte = fgetc(file)) != (u8)EOF)
+    while (fread(&byte, 1, 1, file) != 0)
     {
+        // printf("%x ",byte);
         decompile(byte);
     }
+    printf("\n");
 
     fclose(file);
     
