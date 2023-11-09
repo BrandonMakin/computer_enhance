@@ -310,6 +310,16 @@ void decompile(u8 byte)
         printf("JNP/JPO ; %i\n", next_8_signed());
     else if (byte == 0b01110001) //JNO = Jump on not overflow
         printf("JNO ; %i\n", next_8_signed());
+    else if (byte == 0b01111001) //JNS = Jump on not sign
+        printf("JNS ; %i\n", next_8_signed());
+    else if (byte == 0b11100010) //LOOP = Loop CX times
+        printf("LOOP ; %i\n", next_8_signed());
+    else if (byte == 0b11100001) //LOOPZ/LOOPE = Loop while zero/equal
+        printf("LOOPZ/LOOPE ; %i\n", next_8_signed());
+    else if (byte == 0b11100000) //LOOPNZ/LOOPNE = Loop while not zero/equal
+        printf("LOOPNZ/LOOPNE ; %i\n", next_8_signed());
+    else if (byte == 0b11100011) //JCXZ = Jump on CX zero
+        printf("JCXZ ; %i\n", next_8_signed());
 
     else
     {

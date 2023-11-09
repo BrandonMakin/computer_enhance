@@ -274,6 +274,16 @@ while (idx < len(file_data)):
         print(f"JNP/JPO ; {next(signed=True)}")
     elif byte == 0b01110001: #JNO = Jump on not overflow
         print(f"JNO ; {next(signed=True)}")
+    elif byte == 0b01111001: #JNS = Jump on not sign
+        print(f"JNS ; {next(signed=True)}")
+    elif byte == 0b11100010: #LOOP = Loop CX times
+        print(f"LOOP ; {next(signed=True)}")
+    elif byte == 0b11100001: #LOOPZ/LOOPE = Loop while zero/equal
+        print(f"LOOPZ/LOOPE ; {next(signed=True)}")
+    elif byte == 0b11100000: #LOOPNZ/LOOPNE = Loop while not zero/equal
+        print(f"LOOPNZ/LOOPNE ; {next(signed=True)}")
+    elif byte == 0b11100011: #JCXZ = Jump on CX zero
+        print(f"JCXZ ; {next(signed=True)}")
     else:
         print("unexpected data (unknown instruction, or an instruction was longer than expected); exiting")
         exit(1)
