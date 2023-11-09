@@ -9,17 +9,17 @@ typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint64_t u64;
 
-char *filename = "listing_0040_challenge_movs";
+const char *filename = "listing_0041_add_sub_cmp_jnz";
 
 // table to decode w and r/m fields into their corresponding registers
 // usage:
 // registers[w][rm] == the correct register
-char *registers[2][8] = {
+const char *registers[2][8] = {
     {"al", "cl", "dl", "bl", "ah", "ch", "dh", "bh"},
     {"ax", "cx", "dx", "bx", "sp", "bp", "si", "di"}
 };
 
-char *rm_effective_address_calculation[8] = {"bx + si", "bx + di", "bp + si", "bp + di", "si", "di", "bp", "bx"};
+const char *rm_effective_address_calculation[8] = {"bx + si", "bx + di", "bp + si", "bp + di", "si", "di", "bp", "bx"};
 
 typedef enum Mode
 {
@@ -42,6 +42,33 @@ u8 reg_from(u8 byte)
 u8 rm_from(u8 byte)
 {
     return byte >> 0 & 0b111;
+}
+
+const char* operation_from(u8 byte)
+{
+        switch (reg_from(byte))
+        {
+            case 0b000:
+            {
+                return "add";
+                break;
+            }
+            case 0b101:
+            {
+                return "sub";
+                break;
+            }
+            case 0b111:
+            {
+                return "cmp";
+                break;
+            }
+            default:
+            {
+                return "UNKNOWN_OP";
+                break;
+            }
+        }
 }
 
 FILE *file;
@@ -85,7 +112,7 @@ u16 next_16()
 void rm_to_text(char *text, u8 mod, u8 rm, u8 w)
 {
     // memset(arr, 0, sizeof arr);
-    char *eac = rm_effective_address_calculation[rm];
+    const char *eac = rm_effective_address_calculation[rm];
     switch (mod)
     {
         case MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS:
@@ -143,7 +170,7 @@ void decompile(u8 byte)
         u8 reg = reg_from(byte_2);
         u8 rm = rm_from(byte_2);
 
-        char *reg_text = registers[w][reg];
+        const char *reg_text = registers[w][reg];
         char rm_text[32];
         rm_to_text(rm_text, mod, rm, w);
 
@@ -196,6 +223,94 @@ void decompile(u8 byte)
             printf("mov ax, [%i]\n", memory_address);
     }
 
+    // add/sub/cmp: reg/memory and register to either
+    else if ((byte >> 2 | 0b001110) == 0b001110)
+    {
+        const char *operation = operation_from(byte);
+        u8 d = byte >> 1 & 1;
+        u8 w = byte & 1;
+        u8 byte_2 = next_8();
+        u8 mod = mod_from(byte_2);
+        u8 reg = reg_from(byte_2);
+        u8 rm = rm_from(byte_2);
+
+        const char *reg_text = registers[w][reg];
+        char rm_text[32];
+        rm_to_text(rm_text, mod, rm, w);
+
+        if (d)
+            printf("%s %s, %s\n", operation, reg_text, rm_text);
+        else
+            printf("%s %s, %s\n", operation, rm_text, reg_text);
+    }
+
+    // add/sub/cmp: immediate to register/memory
+    else if (0b100000 == (byte >> 2)) 
+    {
+        // if s == 0: No sign extension.
+        // if s == 1: Sign extend 8-bit immediate data to 16 bits if W == 1
+        u8 s = byte >> 1 & 1;
+
+        u8 w = byte & 1;
+        u8 byte_2 = next_8();
+        u8 mod = mod_from(byte_2);
+        u8 rm = rm_from(byte_2);
+        const char *operation = operation_from(byte_2);
+
+        char rm_text[32];
+        rm_to_text(rm_text, mod, rm, w);
+        u16 immediate_value = (s || !w) ? next_8() : next_16();
+
+        if (mod == REGISTER)
+            printf("%s %s, %i\n", operation, rm_text, immediate_value);
+        else
+        {
+            char* size = w ? "word" : "byte";
+            printf("%s %s %s, %i\n", operation, size, rm_text, immediate_value);
+        }
+    }
+
+    // add/sub/cmp: immediate to accumulator
+    else if (byte >> 6 == 0 && (byte >> 1 & 0b11) == 0b10)
+    {
+        const char* operation = operation_from(byte);
+        u8 w = byte & 1;
+        u16 immediate_value = w ? next_16() : next_8();
+        const char *register_name = w ? "ax" : "al";
+        printf("%s %s, %i\n", operation, register_name, immediate_value);
+    }
+    
+    else if (byte == 0b01110100) //JE/JZ = Jump on equal/zero
+        printf("JE/JZ ; %i\n", next_8_signed());
+    else if (byte == 0b01111100) //JL/JNGE = Jump on less/not greater or equal
+        printf("JL/JNGE ; %i\n", next_8_signed());
+    else if (byte == 0b01111110) //JLE/JNG = Jump on less or equal/not greater
+        printf("JLE/JNG ; %i\n", next_8_signed());
+    else if (byte == 0b01110010) //JB/JNAE = Jump on below/not above or equal
+        printf("JB/JNAE ; %i\n", next_8_signed());
+    else if (byte == 0b01110110) //JBE/JNA = Jump on below or equal/not above
+        printf("JBE/JNA ; %i\n", next_8_signed());
+    else if (byte == 0b01111010) //JP/JPE = Jump on parity/parity even
+        printf("JP/JPE ; %i\n", next_8_signed());
+    else if (byte == 0b01110000) //JO = Jump on overflow
+        printf("JO ; %i\n", next_8_signed());
+    else if (byte == 0b01111000) //JS = Jump on sign
+        printf("JS ; %i\n", next_8_signed());
+    else if (byte == 0b01110101) //JNE/JNZ = Jump on not equal/not zero
+        printf("JNE/JNZ ; %i\n", next_8_signed());
+    else if (byte == 0b01111101) //JNL/JGE = Jump on not less/greater or equal
+        printf("JNL/JGE ; %i\n", next_8_signed());
+    else if (byte == 0b01111111) //JNLE/JG = Jump on not less or equal/greater
+        printf("JNLE/JG ; %i\n", next_8_signed());
+    else if (byte == 0b01110011) //JNB/JAE = Jump on not below/above or equal
+        printf("JNB/JAE ; %i\n", next_8_signed());
+    else if (byte == 0b01110111) //JNBE/JA = Jump on not below or equal/above
+        printf("JNBE/JA ; %i\n", next_8_signed());
+    else if (byte == 0b01111011) //JNP/JPO = Jump on not parity/parity odd
+        printf("JNP/JPO ; %i\n", next_8_signed());
+    else if (byte == 0b01110001) //JNO = Jump on not overflow
+        printf("JNO ; %i\n", next_8_signed());
+
     else
     {
         puts("unexpected data (unknown instruction, or an instruction was longer than expected); exiting.");
@@ -205,7 +320,7 @@ void decompile(u8 byte)
 
 int main(void)
 {
-    puts("bits 16");
+    puts("bits 16\n");
 
     file = fopen(filename, "rb");
     if (file == NULL)
