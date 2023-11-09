@@ -9,7 +9,7 @@ typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint64_t u64;
 
-char *filename = "listing_0039_more_movs";
+char *filename = "listing_0040_challenge_movs";
 
 // table to decode w and r/m fields into their corresponding registers
 // usage:
@@ -102,7 +102,7 @@ void rm_to_text(char *text, u8 mod, u8 rm, u8 w)
             if (offset == 0)
                 sprintf(text, "[%s]", eac);
             else if (offset < 0)
-                sprintf(text, "[%s - %i]", eac, offset);
+                sprintf(text, "[%s - %i]", eac, -offset);
             else
                 sprintf(text, "[%s + %i]", eac, offset);
             break;
@@ -167,40 +167,33 @@ void decompile(u8 byte)
     // MOV (immediate to register/memory)
     else if (0b1100011 == byte >> 1)
     {
-        puts("MOV (immediate to register/memory) is not implemented yet.");
-        // u8 w = byte & 1
-        // u8 byte_2 = next_8()
-        // u8 mod = byte_2 >> 6
-        // u8 rm = byte_2 & 0b111
+        u8 w = byte & 1;
+        u8 byte_2 = next_8();
+        u8 mod = byte_2 >> 6;
+        u8 rm = byte_2 & 0b111;
 
-        // address = rm_effective_address_calculation[rm]
-        // offset = 0 // won't work if there is a defined offset equal to 0, but can that ever happen?
-
-        // match mod:
-        //     case Mode.MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS:
-        //         if rm == 0b110: # direct address. 16-bit displacement to follow.
-        //             address = str(next_16())
-        //     case Mode.MEMORY_8_BIT_DISPLACEMENT:
-        //         offset = next()
-        //     case Mode.MEMORY_16_BIT_DISPLACEMET:
-        //         offset = next_16()
-        //     case Mode.REGISTER:
-        //         print("If this text appears, IDK why MOV (immediate to register/memory) is being called in register mode, but apparently it is.")
-        //         print("Or I'm really misunderstanding something.")
-        //         print("Because it seems like the assembly should just assemble to MOV (immediate to register) instead.")
-        //         print("Let's bail before things break any more.")
-        //         exit(1)
+        char destination[32];
+        rm_to_text(destination, mod, rm, w);
         
-        // immediate_value = ""
-        // if w:
-        //     immediate_value = f"word {next_16()}"
-        // else:
-        //     immediate_value = f"byte {next()}"
+        u16 offset = 0;
 
-        // if (offset != 0):
-        //     address = address + f" + {offset}"
-        
-        // print(f"mov [{address}], {immediate_value}")
+        if (w)
+            printf("mov %s, word %i\n", destination, next_16());
+        else
+            printf("mov %s, byte %i\n", destination, next_8());
+    }
+
+    // memory to accumulator / accumulator to memory
+    else if (0b101000 == byte >> 2)
+    {
+        u8 to_memory = byte >> 1 & 1;
+        u8 w = byte & 1;
+
+        u16 memory_address = w ? next_16() : next_8();
+        if (to_memory) // accumulator to memory
+            printf("mov [%i], ax\n", memory_address);
+        else // memory to accumulator
+            printf("mov ax, [%i]\n", memory_address);
     }
 
     else
