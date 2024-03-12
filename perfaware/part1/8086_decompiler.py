@@ -26,7 +26,7 @@ class Mode:
     REGISTER                                    = 0b11
 
 def reg_value_as_string(name, value):
-    return f"{strong}{name}{reset} │ {gray}0x{reset}{value:0>4x} ╎ {value:>5}"
+    return f"{strong}{name}{reset} │ {gray}0x{reset if value != 0 else ''}{value:0>4x}{reset} ╎ {value:>5}"
 
 
 global file_data
