@@ -1,4 +1,4 @@
-file_name = "listing_0046_add_sub_cmp"
+file_name = "listing_0049_conditional_jumps"
 exec = True
 
 
@@ -25,6 +25,10 @@ class Mode:
     MEMORY_16_BIT_DISPLACEMET                   = 0b10
     REGISTER                                    = 0b11
 
+def reg_value_as_string(name, value):
+    return f"{strong}{name}{reset} │ {gray}0x{reset}{value:0>4x} ╎ {value:>5}"
+
+
 global file_data
 global idx
 idx = 0
@@ -33,8 +37,19 @@ idx = 0
 data = [0] * 8
 
 # flags
-zf = 0
-sf = 0
+zf = False
+sf = False
+
+# colors
+bold = "\033[1m"
+red = "\033[38;5;1m"
+green = "\033[38;5;2m"
+yellow = "\033[38;5;3m"
+blue = "\033[38;5;4m"
+purple = "\033[38;5;5m"
+gray = "\033[38;5;240m"
+strong = bold + red
+reset = "\033[0m"
 
 def flags():
     return ("s" if sf else "") + ("z" if zf else "")
@@ -49,6 +64,8 @@ def next(signed = False):
     else:
         result = file_data[idx]
     idx += 1
+    # print(blue + bold + str(idx), end="/")
+    # print(len(file_data), end=reset + "\n")
     return result
 
 def next_16(): 
@@ -85,6 +102,7 @@ def rm_to_text(mod, rm):
 print("bits 16\n")
 
 while (idx < len(file_data)):
+    p_idx = idx
     byte = next()
     # MOV (register/memory to/from register)
     if 0b100010 == byte >> 2:
@@ -137,7 +155,8 @@ while (idx < len(file_data)):
         if exec:
             dest_idx = reg if d else rm
             src_idx = rm if d else reg
-            print(f" \t;│ {destination}: {hex(data[dest_idx])} -> {hex(data[src_idx])}", end="\t│ ")
+            print(f" \t; {strong}{destination}{reset}: {hex(data[dest_idx])} -> {hex(data[src_idx])}", end="")
+            print(f" {strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end="")
             data[dest_idx] = data[src_idx]
         print()
 
@@ -151,7 +170,8 @@ while (idx < len(file_data)):
         print(f"mov {registers[w][reg]}, {immediate_value}", end="")
 
         if exec:
-            print(f" \t;│ {registers[w][reg]}: {hex(data[reg])} -> {hex(immediate_value)}", end="\t│ ")
+            print(f" \t; {strong}{registers[w][reg]}{reset}: {hex(data[reg])} -> {hex(immediate_value)}", end=" ")
+            print(f"{strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end=" ")
             data[reg] = immediate_value
         print()
 
@@ -225,7 +245,7 @@ while (idx < len(file_data)):
             print(f"{operation} {rm_as_text}, {reg_as_text}", end="")
         
         if exec:
-            print(" \t;│ ", end="")
+            print(" \t; ", end="")
 
             dst = reg if d else rm
             src = rm if d else reg
@@ -243,9 +263,10 @@ while (idx < len(file_data)):
                 case "cmp":
                     result = (data[dst] - data[src] + 2**16) % (2**16)
             zf = result == 0
-            sf = result & 0x8000
-            print(f"{registers[1][dst]}: {hex(pvalue)} -> {hex(data[dst])}", end="\t│ ")
-            print(f"flags: {pflags} -> {flags()}", end="")
+            sf = (result & 0x8000) == 1
+            print(f"{strong}{registers[1][dst]}{reset}: {hex(pvalue)} -> {hex(data[dst])}", end=" ")
+            print(f"{strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end=" ")
+            print(f"{strong}flags{reset}: {pflags} -> {flags()}", end="")
         print()
 
     elif 0b100000 == byte >> 2: # add/sub/cmp: immediate to register/memory
@@ -278,7 +299,7 @@ while (idx < len(file_data)):
         print(f"{operation} {immediate_size}{rm_as_text}, {immediate_value}", end="")
 
         if exec:
-            print(" \t;│ ", end="")
+            print(" \t; ", end="")
 
             dst = rm
             pflags = flags()
@@ -295,9 +316,10 @@ while (idx < len(file_data)):
                 case "cmp":
                     result = (data[dst] - immediate_value + 2**16) % (2**16)
             zf = result == 0
-            sf = result & 0x8000
-            print(f"{registers[1][dst]}: {hex(pvalue)} -> {hex(data[dst])}", end="\t│ ")
-            print(f"flags: {pflags} -> {flags()}", end="")
+            sf = (result & 0x8000) == 1
+            print(f"{strong}{registers[1][dst]}{reset}: {hex(pvalue)} -> {hex(data[dst])}", end=" ")
+            print(f"{strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end=" ")
+            print(f"{strong}flags{reset}: {pflags} -> {flags()}", end="")
         print()
     
     elif byte >> 6 == 0 and byte >> 1 & 0b11 == 0b10: # add/sub/cmp: immediate to accumulator
@@ -317,7 +339,7 @@ while (idx < len(file_data)):
         print(f"{operation} {register}, {immediate_value}", end="")
     
         if exec:
-            print(" \t;│ ", end="")
+            print(" \t; ", end="")
 
             dst = 0 # index for register ax
             pflags = flags()
@@ -334,9 +356,10 @@ while (idx < len(file_data)):
                 case "cmp":
                     result = (data[dst] - immediate_value + 2**16) % (2**16)
             zf = result == 0
-            sf = result & 0x8000
-            print(f"ax: {hex(pvalue)} -> {hex(data[dst])}", end="\t│ ")
-            print(f"flags: {pflags} -> {flags()}", end="")
+            sf = (result & 0x8000) == 1
+            print(f"{strong}ax{reset}: {hex(pvalue)} -> {hex(data[dst])}", end=" ")
+            print(f"{strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end=" ")
+            print(f"{strong}flags{reset}: {pflags} -> {flags()}", end="")
         print()
 
     elif byte == 0b01110100: #JE/JZ = Jump on equal/zero
@@ -356,7 +379,14 @@ while (idx < len(file_data)):
     elif byte == 0b01111000: #JS = Jump on sign
         print(f"JS ; {next(signed=True)}")
     elif byte == 0b01110101: #JNE/JNZ = Jump on not equal/not zero
-        print(f"JNE/JNZ ; {next(signed=True)}")
+        jump = next(signed=True)
+        print(f"JNE/JNZ ; {jump}", end="")
+        if exec:
+            if zf == False:
+                idx += jump
+            print(f"\t  {strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end="")
+        print()
+        
     elif byte == 0b01111101: #JNL/JGE = Jump on not less/greater or equal
         print(f"JNL/JGE ; {next(signed=True)}")
     elif byte == 0b01111111: #JNLE/JG = Jump on not less or equal/greater
@@ -386,8 +416,10 @@ while (idx < len(file_data)):
 if exec:
     print()
     print("╔═════════════════════╗")
-    print("║   Final registers   ║")
+    print("║   Final Registers   ║")
     print("╟─────────────────────╢")
     for i in range(8):
-        print(f"║ {registers[1][i]} │ {hex(data[i]):>6} ╎ {data[i]:>5} ║")
+        print(f"║ {reg_value_as_string(registers[1][i], data[i])} ║")
+    print("║╶───────────────────╴║")
+    print(f"║ {reg_value_as_string('ip', idx)} ║")
     print("╚═════════════════════╝")
