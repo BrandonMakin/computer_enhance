@@ -1,4 +1,4 @@
-file_name = "listing_0044_register_movs"
+file_name = "listing_0046_add_sub_cmp"
 exec = True
 
 
@@ -31,6 +31,13 @@ idx = 0
 
 # register data
 data = [0] * 8
+
+# flags
+zf = 0
+sf = 0
+
+def flags():
+    return ("s" if sf else "") + ("z" if zf else "")
 
 with open(file_name, "rb") as file:
     file_data = bytearray(file.read())
@@ -130,7 +137,7 @@ while (idx < len(file_data)):
         if exec:
             dest_idx = reg if d else rm
             src_idx = rm if d else reg
-            print(f";\t{destination}: {hex(data[dest_idx])} -> {hex(data[src_idx])}", end="")
+            print(f" \t;│ {destination}: {hex(data[dest_idx])} -> {hex(data[src_idx])}", end="\t│ ")
             data[dest_idx] = data[src_idx]
         print()
 
@@ -144,7 +151,7 @@ while (idx < len(file_data)):
         print(f"mov {registers[w][reg]}, {immediate_value}", end="")
 
         if exec:
-            print(f";\t{registers[w][reg]}: {hex(data[reg])} -> {hex(immediate_value)}", end="")
+            print(f" \t;│ {registers[w][reg]}: {hex(data[reg])} -> {hex(immediate_value)}", end="\t│ ")
             data[reg] = immediate_value
         print()
 
@@ -213,9 +220,34 @@ while (idx < len(file_data)):
         rm_as_text = rm_to_text(mod, rm)
 
         if d:
-            print(f"{operation} {reg_as_text}, {rm_as_text}")
+            print(f"{operation} {reg_as_text}, {rm_as_text}", end="")
         else:
-            print(f"{operation} {rm_as_text}, {reg_as_text}")
+            print(f"{operation} {rm_as_text}, {reg_as_text}", end="")
+        
+        if exec:
+            print(" \t;│ ", end="")
+
+            dst = reg if d else rm
+            src = rm if d else reg
+            pflags = flags()
+            pvalue = data[dst]
+
+            result = 0
+            match operation:
+                case "add":
+                    result = (data[dst] + data[src]) % (2**16) # modulo to handle over/underflow
+                    data[dst] = result
+                case "sub":
+                    result = (data[dst] - data[src] + 2**16) % (2**16)
+                    data[dst] = result
+                case "cmp":
+                    result = (data[dst] - data[src] + 2**16) % (2**16)
+            zf = result == 0
+            sf = result & 0x8000
+            print(f"{registers[1][dst]}: {hex(pvalue)} -> {hex(data[dst])}", end="\t│ ")
+            print(f"flags: {pflags} -> {flags()}", end="")
+        print()
+
     elif 0b100000 == byte >> 2: # add/sub/cmp: immediate to register/memory
         w = byte & 1
 
@@ -243,7 +275,30 @@ while (idx < len(file_data)):
         if mod != Mode.REGISTER:
             immediate_size = "word " if w else "byte "
 
-        print(f"{operation} {immediate_size}{rm_as_text}, {immediate_value}")
+        print(f"{operation} {immediate_size}{rm_as_text}, {immediate_value}", end="")
+
+        if exec:
+            print(" \t;│ ", end="")
+
+            dst = rm
+            pflags = flags()
+            pvalue = data[dst]
+
+            result = 0
+            match operation:
+                case "add":
+                    result = (data[dst] + immediate_value) % (2**16) # modulo to handle over/underflow
+                    data[dst] = result
+                case "sub":
+                    result = (data[dst] - immediate_value + 2**16) % (2**16)
+                    data[dst] = result
+                case "cmp":
+                    result = (data[dst] - immediate_value + 2**16) % (2**16)
+            zf = result == 0
+            sf = result & 0x8000
+            print(f"{registers[1][dst]}: {hex(pvalue)} -> {hex(data[dst])}", end="\t│ ")
+            print(f"flags: {pflags} -> {flags()}", end="")
+        print()
     
     elif byte >> 6 == 0 and byte >> 1 & 0b11 == 0b10: # add/sub/cmp: immediate to accumulator
         operation = ""
@@ -259,7 +314,30 @@ while (idx < len(file_data)):
         immediate_value = next_16() if w else next()
         register = "ax" if w else "al"
 
-        print(f"{operation} {register}, {immediate_value}")
+        print(f"{operation} {register}, {immediate_value}", end="")
+    
+        if exec:
+            print(" \t;│ ", end="")
+
+            dst = 0 # index for register ax
+            pflags = flags()
+            pvalue = data[dst]
+
+            result = 0
+            match operation:
+                case "add":
+                    result = (data[dst] + immediate_value) % (2**16) # modulo to handle over/underflow
+                    data[dst] = result
+                case "sub":
+                    result = (data[dst] - immediate_value + 2**16) % (2**16)
+                    data[dst] = result
+                case "cmp":
+                    result = (data[dst] - immediate_value + 2**16) % (2**16)
+            zf = result == 0
+            sf = result & 0x8000
+            print(f"ax: {hex(pvalue)} -> {hex(data[dst])}", end="\t│ ")
+            print(f"flags: {pflags} -> {flags()}", end="")
+        print()
 
     elif byte == 0b01110100: #JE/JZ = Jump on equal/zero
         print (f"JE/JZ ; {next(signed=True)}")
@@ -307,9 +385,9 @@ while (idx < len(file_data)):
 
 if exec:
     print()
-    print("╔═════════════════╗")
-    print("║ Final registers ║")
-    print("╟─────────────────╢")
+    print("╔═════════════════════╗")
+    print("║   Final registers   ║")
+    print("╟─────────────────────╢")
     for i in range(8):
-        print(f"║  {registers[1][i]} │ {hex(data[i]):>4} ╎ {data[i]:>2} ║")
-    print("╚═════════════════╝")
+        print(f"║ {registers[1][i]} │ {hex(data[i]):>6} ╎ {data[i]:>5} ║")
+    print("╚═════════════════════╝")
