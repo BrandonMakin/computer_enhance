@@ -21,6 +21,8 @@ const char *registers[2][8] = {
 
 const char *rm_effective_address_calculation[8] = {"bx + si", "bx + di", "bp + si", "bp + di", "si", "di", "bp", "bx"};
 
+FILE *file;
+
 typedef enum Mode
 {
     MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS    = 0b00,
@@ -70,8 +72,6 @@ const char* operation_from(u8 byte)
             }
         }
 }
-
-FILE *file;
 
 u8 next_8()
 {
@@ -162,10 +162,8 @@ void decompile(u8 byte)
         // if w == 1: to move a word (2 bytes)
         u8 w = byte & 1;
 
-        // second bit
         u8 byte_2 = next_8();
         
-        // mod, reg, rm = get_mod_reg_rm(byte_2)
         u8 mod = mod_from(byte_2);
         u8 reg = reg_from(byte_2);
         u8 rm = rm_from(byte_2);
@@ -180,7 +178,7 @@ void decompile(u8 byte)
             printf("mov %s, %s\n", rm_text, reg_text);
     }
 
-    // MOV (immediate to register)
+    // MOV: immediate to register
     else if (0b1011 == byte >> 4)
     {
         u8 w = byte >> 3 & 1;
@@ -191,7 +189,7 @@ void decompile(u8 byte)
         printf("mov %s, %i\n", registers[w][reg], immediate_value);
     }
 
-    // MOV (immediate to register/memory)
+    // MOV: immediate to register/memory
     else if (0b1100011 == byte >> 1)
     {
         u8 w = byte & 1;
@@ -210,7 +208,7 @@ void decompile(u8 byte)
             printf("mov %s, byte %i\n", destination, next_8());
     }
 
-    // memory to accumulator / accumulator to memory
+    // MOV: memory to accumulator / accumulator to memory
     else if (0b101000 == byte >> 2)
     {
         u8 to_memory = byte >> 1 & 1;
@@ -223,7 +221,7 @@ void decompile(u8 byte)
             printf("mov ax, [%i]\n", memory_address);
     }
 
-    // add/sub/cmp: reg/memory and register to either
+    // ADD/SUB/CMP: reg/memory and register to either
     else if ((byte >> 2 | 0b001110) == 0b001110)
     {
         const char *operation = operation_from(byte);
@@ -244,7 +242,7 @@ void decompile(u8 byte)
             printf("%s %s, %s\n", operation, rm_text, reg_text);
     }
 
-    // add/sub/cmp: immediate to register/memory
+    // ADD/SUB/CMP: immediate to register/memory
     else if (0b100000 == (byte >> 2)) 
     {
         // if s == 0: No sign extension.
@@ -270,7 +268,7 @@ void decompile(u8 byte)
         }
     }
 
-    // add/sub/cmp: immediate to accumulator
+    // ADD/SUB/CMP: immediate to accumulator
     else if (byte >> 6 == 0 && (byte >> 1 & 0b11) == 0b10)
     {
         const char* operation = operation_from(byte);
@@ -280,6 +278,7 @@ void decompile(u8 byte)
         printf("%s %s, %i\n", operation, register_name, immediate_value);
     }
     
+    // Jumps and loops
     else if (byte == 0b01110100) //JE/JZ = Jump on equal/zero
         printf("JE/JZ ; %i\n", next_8_signed());
     else if (byte == 0b01111100) //JL/JNGE = Jump on less/not greater or equal
