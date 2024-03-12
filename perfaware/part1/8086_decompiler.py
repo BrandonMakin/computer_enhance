@@ -1,4 +1,6 @@
-# emulate mov
+file_name = "listing_0044_register_movs"
+exec = True
+
 
 '''
 table to decode w and r/m fields into their corresponding registers
@@ -27,7 +29,10 @@ global file_data
 global idx
 idx = 0
 
-with open("listing_0041_add_sub_cmp_jnz", "rb") as file:
+# register data
+data = [0] * 8
+
+with open(file_name, "rb") as file:
     file_data = bytearray(file.read())
 
 def next(signed = False):
@@ -121,7 +126,13 @@ while (idx < len(file_data)):
         if (d): # if d: swap source and destination
             source, destination = destination, source
 
-        print(f"mov {destination}, {source}")
+        print(f"mov {destination}, {source}", end="")
+        if exec:
+            dest_idx = reg if d else rm
+            src_idx = rm if d else reg
+            print(f";\t{destination}: {hex(data[dest_idx])} -> {hex(data[src_idx])}", end="")
+            data[dest_idx] = data[src_idx]
+        print()
 
     # MOV (immediate to register)
     elif 0b1011 == byte >> 4:
@@ -130,9 +141,15 @@ while (idx < len(file_data)):
         immediate_value = next() # least significant byte
         if w:
             immediate_value += next() * 0x100 # most significant byte (only used for 2-byte registers)
-        print(f"mov {registers[w][reg]}, {immediate_value}")
+        print(f"mov {registers[w][reg]}, {immediate_value}", end="")
 
-    elif 0b1100011 == byte >> 1: # MOV (immediate to register/memory)
+        if exec:
+            print(f";\t{registers[w][reg]}: {hex(data[reg])} -> {hex(immediate_value)}", end="")
+            data[reg] = immediate_value
+        print()
+
+    # MOV (immediate to register/memory)
+    elif 0b1100011 == byte >> 1:
         w = byte & 1
         byte_2 = next()
         mod = byte_2 >> 6
@@ -287,3 +304,12 @@ while (idx < len(file_data)):
     else:
         print("unexpected data (unknown instruction, or an instruction was longer than expected); exiting")
         exit(1)
+
+if exec:
+    print()
+    print("╔═════════════════╗")
+    print("║ Final registers ║")
+    print("╟─────────────────╢")
+    for i in range(8):
+        print(f"║  {registers[1][i]} │ {hex(data[i]):>4} ╎ {data[i]:>2} ║")
+    print("╚═════════════════╝")
