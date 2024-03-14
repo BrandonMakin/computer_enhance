@@ -1,4 +1,4 @@
-file_name = "listing_0049_conditional_jumps"
+file_name = "listing_0051_memory_mov"
 exec = True
 
 
@@ -19,11 +19,34 @@ def get_mod_reg_rm(byte):
     rm  = byte >> 0 & 0b111 # R/M (register/memory)
     return mod, reg, rm
 
+class Register:
+    NONE = -1
+    ax = 0
+    cx = 1
+    dx = 2
+    bx = 3
+    sp = 4
+    bp = 5
+    si = 6
+    di = 7
+
+eac = [
+    [Register.bx, Register.si],
+    [Register.bx, Register.di],
+    [Register.bp, Register.si],
+    [Register.bp, Register.di],
+    [Register.si, Register.NONE],
+    [Register.di, Register.NONE],
+    [Register.bp, Register.NONE],
+    [Register.bx, Register.NONE]
+]
+
 class Mode:
     MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS    = 0b00
     MEMORY_8_BIT_DISPLACEMENT                   = 0b01
     MEMORY_16_BIT_DISPLACEMET                   = 0b10
     REGISTER                                    = 0b11
+
 
 def reg_value_as_string(name, value):
     return f"{strong}{name}{reset} │ {gray}0x{reset if value != 0 else ''}{value:0>4x}{reset} ╎ {value:>5}"
@@ -35,6 +58,7 @@ idx = 0
 
 # register data
 data = [0] * 8
+memory = bytearray(2**20) # 1 MB byte array
 
 # flags
 zf = False
@@ -97,7 +121,18 @@ def rm_to_text(mod, rm):
     if (mod != Mode.REGISTER):
         text = "[" + text + "]"
     
-    return text
+    return text, offset
+
+def calculate_effective_address(mod, rm, offset):
+    if mod == Mode.MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS and rm == 0b110: # direct address mode
+        return offset
+    else:
+        address_registers = eac[rm]
+        effective_address = data[address_registers[0]]
+        if address_registers[1] != Register.NONE:
+            effective_address += data[address_registers[1]]
+        effective_address += offset
+        return effective_address
 
 print("bits 16\n")
 
@@ -125,14 +160,15 @@ while (idx < len(file_data)):
 
         source = registers[w][reg]  # set source to register specified by reg
 
-        if mod == 0b11: # register mode
+        if mod == Mode.REGISTER:
             destination = registers[w][rm] # set destination to register specified by rm
         else: # memory mode
-            address = rm_effective_address_calculation[rm] # effective address calculation
+            address_string = rm_effective_address_calculation[rm] # effective address calculation
             match mod:
                 case Mode.MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS:
                     if rm == 0b110: # direct address
-                        address = str(next_16())
+                        offset = next_16()
+                        address_string = str(offset)
                 case Mode.MEMORY_8_BIT_DISPLACEMENT:
                     sign = "+"
                     offset = next()
@@ -140,11 +176,11 @@ while (idx < len(file_data)):
                         offset = 256 - offset
                         sign = "-"
                     if offset != 0:
-                        address += f" {sign} {offset}"
+                        address_string += f" {sign} {offset}"
                 case Mode.MEMORY_16_BIT_DISPLACEMET:
                     offset = next_16()
                     if offset != 0:
-                        address += f" + {offset}"
+                        address_string += f" + {offset}"
             
             destination = f"[{address}]"
 
@@ -153,11 +189,28 @@ while (idx < len(file_data)):
 
         print(f"mov {destination}, {source}", end="")
         if exec:
-            dest_idx = reg if d else rm
-            src_idx = rm if d else reg
-            print(f" \t; {strong}{destination}{reset}: {hex(data[dest_idx])} -> {hex(data[src_idx])}", end="")
+            if mod == Mode.REGISTER:
+                dest_idx = reg if d else rm
+                src_idx = rm if d else reg
+                print(f" \t; {strong}{destination}{reset}: {hex(data[dest_idx])} -> {hex(data[src_idx])}", end="")
+                data[dest_idx] = data[src_idx]
+            else:
+                address = calculate_effective_address(mod, rm, offset)
+                if d: # register is the destination and memory is the source
+                    if w:
+                        source_data = int.from_bytes(memory[address:address+2], 'little')
+                    else:
+                        source_data = memory[address]
+                    print(f" \t; {strong}{destination}{reset}: 0x{data[reg]:x} -> 0x{source_data:x}", end="")
+                    data[reg] = source_data
+                else:
+                    if w:
+                        dest_data = int.to_bytes(data[reg], 2, 'little')
+                        memory[address] = dest_data[0]
+                        memory[address + 1] = dest_data[1]
+                    else:
+                        memory[address] = data[reg]
             print(f" {strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end="")
-            data[dest_idx] = data[src_idx]
         print()
 
     # MOV (immediate to register)
@@ -182,13 +235,14 @@ while (idx < len(file_data)):
         mod = byte_2 >> 6
         rm = byte_2 & 0b111
 
-        address = rm_effective_address_calculation[rm]
+        address_string = rm_effective_address_calculation[rm]
         offset = 0 # won't work if there is a defined offset equal to 0, but can that ever happen?
-
+        address = 0
         match mod:
             case Mode.MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS:
                 if rm == 0b110: # direct address. 16-bit displacement to follow.
-                    address = str(next_16())
+                    address = next_16()
+                    address_string = str(address)
             case Mode.MEMORY_8_BIT_DISPLACEMENT:
                 offset = next()
             case Mode.MEMORY_16_BIT_DISPLACEMET:
@@ -200,16 +254,31 @@ while (idx < len(file_data)):
                 print("Let's bail before things break any more.")
                 exit(1)
         
-        immediate_value = ""
+        immediate_value = 0
+        immediate_size = ""
         if w:
-            immediate_value = f"word {next_16()}"
+            immediate_value = next_16()
+            immediate_size = f"word"
         else:
-            immediate_value = f"byte {next()}"
+            immediate_value = next()
+            immediate_size = f"byte"
 
         if (offset != 0):
-            address = address + f" + {offset}"
+            address_string = address_string + f" + {offset}"
         
-        print(f"mov [{address}], {immediate_value}")
+        print(f"mov [{address_string}], {immediate_size} {immediate_value}", end="")
+
+        if exec:
+            address = calculate_effective_address(mod, rm, offset|address)
+            if w:
+                dest_data = int.to_bytes(immediate_value, 2, 'little')
+                memory[address] = dest_data[0]
+                memory[address + 1] = dest_data[1]
+            else:
+                memory[address] = immediate_value
+            print(f"\t; ", end="")
+            print(f"{strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end="")
+        print()
 
     elif 0b101000 == byte >> 2: # memory to accumulator / accumulator to memory
         to_memory = byte >> 1 & 1
@@ -249,7 +318,6 @@ while (idx < len(file_data)):
 
             dst = reg if d else rm
             src = rm if d else reg
-            pflags = flags()
             pvalue = data[dst]
 
             result = 0
@@ -265,8 +333,7 @@ while (idx < len(file_data)):
             zf = result == 0
             sf = (result & 0x8000) == 1
             print(f"{strong}{registers[1][dst]}{reset}: {hex(pvalue)} -> {hex(data[dst])}", end=" ")
-            print(f"{strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end=" ")
-            print(f"{strong}flags{reset}: {pflags} -> {flags()}", end="")
+        print(f"{strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end=" ")
         print()
 
     elif 0b100000 == byte >> 2: # add/sub/cmp: immediate to register/memory
@@ -294,9 +361,9 @@ while (idx < len(file_data)):
 
         immediate_size = ""
         if mod != Mode.REGISTER:
-            immediate_size = "word " if w else "byte "
+            immediate_size = "word" if w else "byte"
 
-        print(f"{operation} {immediate_size}{rm_as_text}, {immediate_value}", end="")
+        print(f"{operation} {immediate_size} {rm_as_text}, {immediate_value}", end="")
 
         if exec:
             print(" \t; ", end="")
@@ -418,6 +485,8 @@ if exec:
     print("╔═════════════════════╗")
     print("║   Final Registers   ║")
     print("╟─────────────────────╢")
+    print(f"║    │ {gray}Hex{reset}    ╎ {gray}Dec{reset}   ║")
+    print("╟╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╢")
     for i in range(8):
         print(f"║ {reg_value_as_string(registers[1][i], data[i])} ║")
     print("║╶───────────────────╴║")
