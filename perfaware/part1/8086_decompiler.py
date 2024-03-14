@@ -1,4 +1,4 @@
-file_name = "listing_0051_memory_mov"
+file_name = "listing_0052_memory_add_loop"
 exec = True
 
 
@@ -121,7 +121,7 @@ def rm_to_text(mod, rm):
     if (mod != Mode.REGISTER):
         text = "[" + text + "]"
     
-    return text, offset
+    return text
 
 def calculate_effective_address(mod, rm, offset):
     if mod == Mode.MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS and rm == 0b110: # direct address mode
@@ -164,6 +164,7 @@ while (idx < len(file_data)):
             destination = registers[w][rm] # set destination to register specified by rm
         else: # memory mode
             address_string = rm_effective_address_calculation[rm] # effective address calculation
+            offset = 0
             match mod:
                 case Mode.MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS:
                     if rm == 0b110: # direct address
@@ -182,7 +183,7 @@ while (idx < len(file_data)):
                     if offset != 0:
                         address_string += f" + {offset}"
             
-            destination = f"[{address}]"
+            destination = f"[{address_string}]"
 
         if (d): # if d: swap source and destination
             source, destination = destination, source
@@ -447,8 +448,11 @@ while (idx < len(file_data)):
         print(f"JS ; {next(signed=True)}")
     elif byte == 0b01110101: #JNE/JNZ = Jump on not equal/not zero
         jump = next(signed=True)
+        if exec:
+            print(purple, end="")
         print(f"JNE/JNZ ; {jump}", end="")
         if exec:
+            print(reset, end="")
             if zf == False:
                 idx += jump
             print(f"\t  {strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end="")
