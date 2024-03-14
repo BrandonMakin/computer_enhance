@@ -1,5 +1,6 @@
-file_name = "listing_0052_memory_add_loop"
-exec = True
+file_name = "listing_0054_draw_rectangle"
+exec = True # simulate assembly
+dump = False # dump simulated memory to a file
 
 
 '''
@@ -496,3 +497,7 @@ if exec:
     print("║╶───────────────────╴║")
     print(f"║ {reg_value_as_string('ip', idx)} ║")
     print("╚═════════════════════╝")
+
+    if dump:
+        with open("memory_dump.data", "wb") as f:
+            f.write(memory)
