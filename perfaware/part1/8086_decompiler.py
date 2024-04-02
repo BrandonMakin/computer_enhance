@@ -1,7 +1,7 @@
-file_name = "listing_0054_draw_rectangle"
+file_name = "listing_0056_estimating_cycles"
 exec = True # simulate assembly
 dump = False # dump simulated memory to a file
-
+clock = True # show speed in clock cycles
 
 '''
 table to decode w and r/m fields into their corresponding registers
@@ -42,6 +42,41 @@ eac = [
     [Register.bx, Register.NONE]
 ]
 
+def eac_clocks(mod, rm):
+    # bp with no offset is not Mode.MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS
+    # but it still takes takes 5 clocks
+    if mod == Mode.MEMORY_8_BIT_DISPLACEMENT and rm == 6:
+        return 5
+    
+    if mod == Mode.MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS:
+        if rm == 0b110: # displacement only
+            return 6
+        else:
+            match rm:
+                case 0:
+                    return 7
+                case 1:
+                    return 8
+                case 2:
+                    return 8
+                case 3:
+                    return 7
+                case _: # base or index only
+                    return 5
+    if mod == Mode.MEMORY_8_BIT_DISPLACEMENT or mod == Mode.MEMORY_16_BIT_DISPLACEMET:
+        match rm:
+            case 0:
+                return 11
+            case 1:
+                return 12
+            case 2:
+                return 12
+            case 3:
+                return 11
+            case _: # displacement + base or index only
+                return 9
+            
+
 class Mode:
     MEMORY_NO_DISPLACEMENT_OR_DIRECT_ADDRESS    = 0b00
     MEMORY_8_BIT_DISPLACEMENT                   = 0b01
@@ -52,6 +87,15 @@ class Mode:
 def reg_value_as_string(name, value):
     return f"{strong}{name}{reset} │ {gray}0x{reset if value != 0 else ''}{value:0>4x}{reset} ╎ {value:>5}"
 
+total_clocks = 0
+def add_clock_cycles(clocks, ea_clocks=0):
+    global total_clocks
+    if clock:
+        total_clocks += clocks + ea_clocks
+        print(f"{blue}Clocks: +{clocks + ea_clocks} = {total_clocks}", end="")
+        if ea_clocks != 0:
+            print(f" ({clocks} + {ea_clocks}[ea])", end="")
+        print(f"{reset} | ", end="")
 
 global file_data
 global idx
@@ -191,14 +235,18 @@ while (idx < len(file_data)):
 
         print(f"mov {destination}, {source}", end="")
         if exec:
+            print("\t; ", end="")
             if mod == Mode.REGISTER:
+                add_clock_cycles(2)
+
                 dest_idx = reg if d else rm
                 src_idx = rm if d else reg
-                print(f" \t; {strong}{destination}{reset}: {hex(data[dest_idx])} -> {hex(data[src_idx])}", end="")
+                print(f"{strong}{destination}{reset}: {hex(data[dest_idx])} -> {hex(data[src_idx])}", end="")
                 data[dest_idx] = data[src_idx]
             else:
                 address = calculate_effective_address(mod, rm, offset)
                 if d: # register is the destination and memory is the source
+                    add_clock_cycles(8, eac_clocks(mod, rm))
                     if w:
                         source_data = int.from_bytes(memory[address:address+2], 'little')
                     else:
@@ -206,6 +254,7 @@ while (idx < len(file_data)):
                     print(f" \t; {strong}{destination}{reset}: 0x{data[reg]:x} -> 0x{source_data:x}", end="")
                     data[reg] = source_data
                 else:
+                    add_clock_cycles(9, eac_clocks(mod, rm))
                     if w:
                         dest_data = int.to_bytes(data[reg], 2, 'little')
                         memory[address] = dest_data[0]
@@ -225,7 +274,9 @@ while (idx < len(file_data)):
         print(f"mov {registers[w][reg]}, {immediate_value}", end="")
 
         if exec:
-            print(f" \t; {strong}{registers[w][reg]}{reset}: {hex(data[reg])} -> {hex(immediate_value)}", end=" ")
+            print("\t; ", end="")
+            add_clock_cycles(4)
+            print(f"{strong}{registers[w][reg]}{reset}: {hex(data[reg])} -> {hex(immediate_value)}", end=" ")
             print(f"{strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end=" ")
             data[reg] = immediate_value
         print()
@@ -271,6 +322,8 @@ while (idx < len(file_data)):
         print(f"mov [{address_string}], {immediate_size} {immediate_value}", end="")
 
         if exec:
+            print("\t; ", end="")
+            add_clock_cycles(10, eac_clocks(mod, rm))
             address = calculate_effective_address(mod, rm, offset|address)
             if w:
                 dest_data = int.to_bytes(immediate_value, 2, 'little')
@@ -278,7 +331,6 @@ while (idx < len(file_data)):
                 memory[address + 1] = dest_data[1]
             else:
                 memory[address] = immediate_value
-            print(f"\t; ", end="")
             print(f"{strong}ip{reset}: {hex(p_idx)} -> {hex(idx)}", end="")
         print()
 
@@ -318,6 +370,16 @@ while (idx < len(file_data)):
         if exec:
             print(" \t; ", end="")
 
+            if mod == Mode.REGISTER:
+                add_clock_cycles(3)
+            else:
+                if d:
+                    add_clock_cycles(9, eac_clocks(mod, rm))
+                elif operation == "cmp":
+                    add_clock_cycles(9, eac_clocks(mod, rm))
+                else:
+                    add_clock_cycles(16, eac_clocks(mod, rm))
+            
             dst = reg if d else rm
             src = rm if d else reg
             pvalue = data[dst]
@@ -370,6 +432,14 @@ while (idx < len(file_data)):
         if exec:
             print(" \t; ", end="")
 
+            if mod == Mode.REGISTER:
+                add_clock_cycles(4)
+            else:
+                if operation == "cmp":
+                    add_clock_cycles(10, eac_clocks(mod, rm))
+                else:
+                    add_clock_cycles(17, eac_clocks(mod, rm))
+
             dst = rm
             pflags = flags()
             pvalue = data[dst]
@@ -409,7 +479,9 @@ while (idx < len(file_data)):
     
         if exec:
             print(" \t; ", end="")
-
+            
+            add_clock_cycles(4)
+            
             dst = 0 # index for register ax
             pflags = flags()
             pvalue = data[dst]
