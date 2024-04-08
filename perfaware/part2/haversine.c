@@ -12,20 +12,74 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef double f64;
 
+typedef enum token_type
+{
+    TOKEN_COMMA = ',',
+    TOKEN_COLON = ':',
+    TOKEN_LEFT_BRACKET = '[',
+    TOKEN_RIGHT_BRACKET = ']',
+    TOKEN_LEFT_BRACE = '{',
+    TOKEN_RIGHT_BRACE = '}',
+    // STRING and NUMBER have ascii chars so that I can easily print them with "%c"
+    // But those two might as well be equal to 0 and 1, or anything else.
+    TOKEN_NUMBER = 'N',
+    TOKEN_STRING = 'S',
+} token_type;
+
+typedef enum json_object_type
+{
+    JSON_STRING,
+    JSON_LIST,
+    JSON_NUMBER,
+    JSON_DICTIONARY,
+} json_object_type;
+
 typedef struct token
 {
+    token_type type;
     u32 start_index;
     u32 end_index;
 } token;
 
-void push_token(linked_list *list, u32 start, u32 end)
+typedef struct json_object
+{
+    json_object_type type;
+    union
+    {
+        char* string;
+        linked_list list;
+        f64 number;
+        hashtable dictionary;
+    };
+} json_object;
+
+void push_token(linked_list *list, token_type type, u32 start, u32 end)
 {
     token *current_token = (token* )malloc(sizeof(token));
+    current_token->type = type;
     current_token->start_index = start;
     current_token->end_index = end;
 
     list_node *node = list_push_back(list);
     node->data = current_token;
+}
+
+json_object parse(linked_list tokens)
+{
+    list_node *node = tokens.first;
+    token *current_token = node->data;
+    if ('[' == current_token->type)
+    {
+        puts("ey we got a [");
+    }
+    else if ('{' == current_token->type)
+    {
+        puts("hoo boy, we got a {");
+    }
+    else
+    {
+        printf("oh no, we got something I don't recognize of type: %c\n", current_token->type);
+    }
 }
 
 int main(int argc, char* argv[])
@@ -86,7 +140,7 @@ int main(int argc, char* argv[])
             c == ','
         )
         {
-            push_token(&tokens, i, i+1);
+            push_token(&tokens, c, i, i+1);
             i++;
         }
 
@@ -110,7 +164,7 @@ int main(int argc, char* argv[])
                     break;
                 }
             }
-            push_token(&tokens, start, i-1);
+            push_token(&tokens, TOKEN_STRING, start, i-1);
         }
 
         // lex numbers
@@ -144,7 +198,7 @@ int main(int argc, char* argv[])
             if (found_next_token)
             {
                 i--;
-                push_token(&tokens, start, i);
+                push_token(&tokens, TOKEN_NUMBER, start, i);
             }
         }
         // handle unrecognized characters
@@ -165,6 +219,10 @@ int main(int argc, char* argv[])
     puts("Lexical analysis completed successfully!");
 
 
+    // Syntactic Analysis (Parsing)
+    parse(tokens);
+    tokens.first = tokens.first->next;
+    parse(tokens);
 
     // // Debug: print lexer tokens
     // list_node *current_node = tokens.first;
