@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "hashtable.h"
 #include "linked_list.h"
@@ -37,8 +38,8 @@ typedef enum json_object_type
 typedef struct token
 {
     token_type type;
-    u32 start_index;
-    u32 end_index;
+    char *starting_character;
+    u32 length;
 } token;
 
 typedef struct json_object
@@ -53,12 +54,12 @@ typedef struct json_object
     };
 } json_object;
 
-void push_token(linked_list *list, token_type type, u32 start, u32 end)
+void push_token(linked_list *list, char *source_data, token_type type, u32 start, u32 end)
 {
-    token *current_token = (token* )malloc(sizeof(token));
+    token *current_token = malloc(sizeof(token));
     current_token->type = type;
-    current_token->start_index = start;
-    current_token->end_index = end;
+    current_token->starting_character = source_data + start;
+    current_token->length = end - start;
 
     list_push_back(list, current_token);
 }
@@ -66,98 +67,162 @@ void push_token(linked_list *list, token_type type, u32 start, u32 end)
 json_object *parse(linked_list *tokens)
 {
     token *current_token = tokens->first->data;
-    
-    // parse lists
-    if ('[' == current_token->type)
+    switch (current_token->type)
     {
-        puts("ey we got a [");
-
-        tokens->first = tokens->first->next;
-        current_token = tokens->first->data;
-
-        linked_list json_list = list_create();
-
-        json_object *return_value = (json_object* )calloc(1, sizeof(json_object));
-        return_value->type = JSON_LIST;
-        return_value->list = json_list;
-
-        if (']' == current_token->type)
+        // parse arrays
+        case '[':
         {
-            puts("closing with a ]");
+            puts("ey we got a [");
+
             tokens->first = tokens->first->next;
-            return return_value;
-        }
-        while (tokens->first != NULL)
-        {
-            json_object *result = parse(tokens);
-            list_push_back(&json_list, result);
-
             current_token = tokens->first->data;
+
+            linked_list json_list = list_create();
+
+            json_object *return_value = calloc(1, sizeof(json_object));
+            return_value->type = JSON_LIST;
+            return_value->list = json_list;
+
             if (']' == current_token->type)
             {
                 puts("closing with a ]");
                 tokens->first = tokens->first->next;
                 return return_value;
             }
-            else if (',' == current_token->type)
-            {
-                tokens->first = tokens->first->next;
-            }
-            else
-            {
-                printf("Expected comma after array object. Got token of type: %c\n", current_token->type);
-                exit(0);
-            }
-        }
-        printf("Expected ']' at the end of an array. Got EOL instead.\n");
-        exit(0);
-        return NULL;
-    }
-
-    // parse objects
-    else if ('{' == current_token->type)
-    {
-        puts("hoo boy, we got a {");
-
-        tokens->first = tokens->first->next;
-        current_token = tokens->first->data;
-
-        hashtable json_dict = allocate_table();
-
-        json_object *return_value = (json_object* )calloc(1, sizeof(json_object));
-        return_value->type = JSON_DICTIONARY;
-        return_value->dictionary = json_dict;
-
-        if ('}' == current_token->type)
-        {
-            puts("closing with a }");
-            tokens->first = tokens->first->next;
-            return return_value;
-        }
-        else
-        {
             while (tokens->first != NULL)
             {
-                if ('}' == current_token->type)
+                json_object *result = parse(tokens);
+                list_push_back(&json_list, result);
+
+                current_token = tokens->first->data;
+                if (']' == current_token->type)
                 {
-                    puts("closing with a }");
+                    puts("closing with a ]");
                     tokens->first = tokens->first->next;
                     return return_value;
                 }
+                else if (',' == current_token->type)
+                {
+                    tokens->first = tokens->first->next;
+                }
                 else
                 {
-                    printf("Expected '}'. Got token of type: %c\n", current_token->type);
+                    printf("Expected comma after array object. Got token of type: %c\n", current_token->type);
                     exit(0);
                 }
             }
-            printf("Expected '}' at the end of an array. Got EOL instead.\n");
+            printf("Expected ']' at the end of an array. Got EOL instead.\n");
+            exit(0);
+            return NULL;
         }
-    }
-    else
-    {
-        printf("oh no, we got something I don't recognize of type: %c\n", current_token->type);
-        exit(0);
-        return NULL;
+
+        // parse objects
+        case '{':
+        {
+            puts("hoo boy, we got a {");
+
+            tokens->first = tokens->first->next;
+            current_token = tokens->first->data;
+
+            hashtable json_dict = allocate_table();
+
+            json_object *return_value = calloc(1, sizeof(json_object));
+            return_value->type = JSON_DICTIONARY;
+            return_value->dictionary = json_dict;
+
+            if ('}' == current_token->type)
+            {
+                puts("closing with a }");
+                tokens->first = tokens->first->next;
+                return return_value;
+            }
+            else
+            {
+                while (tokens->first != NULL)
+                {
+                    switch (current_token->type)
+                    {
+                        case '}':
+                        {
+                            puts("closing with a }");
+                            tokens->first = tokens->first->next;
+                            return return_value;
+
+                            break;
+                        }
+                        case TOKEN_STRING:
+                        {
+                            char *key;
+                            json_object *value;
+
+                            {
+                                u32 key_len = current_token->length;
+                                key = calloc(key_len + 1, sizeof(char));
+                                strncpy(key, current_token->starting_character, key_len);
+                                printf("object key: \"%s\"\n", key);
+                            }
+
+                            tokens->first = tokens->first->next;
+                            current_token = tokens->first->data;
+
+                            if (':' == current_token->type)
+                            {
+                                tokens->first = tokens->first->next;
+                                value = parse(tokens);
+                                table_set(json_dict, key, value);
+                            }
+                            else
+                            {
+                                printf("Expected ':' after object key. Got token of type: %c\n", current_token->type);
+                                
+                                exit(0);
+                                return NULL;
+                            }
+
+                            return return_value;
+                            break;
+                        }
+                        default:
+                        {
+                            printf("Expected '}'. Got token of type: %c\n", current_token->type);
+                            
+                            exit(0);
+                            return NULL;
+                        }
+                    }
+                }
+                printf("Expected '}' at the end of an array. Got EOL instead.\n");
+            }
+
+            exit(0);
+            return NULL;
+        }
+
+        // parse numbers
+        case TOKEN_NUMBER:
+        {
+            puts("Number parsing implemented not in yet.");
+
+            exit(0);
+            return NULL;
+        }
+
+        // parse strings
+        case TOKEN_STRING:
+        {
+            puts("String parsing is not implemented yet.");
+
+            exit(0);
+            return NULL;
+        }
+
+        default:
+        {
+            printf("oh no, we got something I didn't expect of type: %c\n", current_token->type);
+            
+            exit(0);
+            return NULL;
+        }
     }
 }
 
@@ -182,7 +247,7 @@ int main(int argc, char* argv[])
     u32 file_length = ftell(file);
 
     // DEBUG: print file length.
-    char* converted_length = (char* )calloc(30, sizeof(char));
+    char* converted_length = calloc(30, sizeof(char));
     if (file_length > 1<<30)
         sprintf(converted_length, " (%d GiB)", file_length/(1<<30));
     else if (file_length > 1<<20)
@@ -193,7 +258,7 @@ int main(int argc, char* argv[])
 
     fseek(file, 0L, SEEK_SET);
 
-    char* file_data = (char* )calloc(file_length, sizeof(char));
+    char* file_data = calloc(file_length, sizeof(char));
     // using calloc instead of malloc to initialize bytes to 0 may be pointless
     // because I immediately overwrite the data by reading from a file
     // but maybe it'll prevent some weird bug I otherwise never would've found.
@@ -223,7 +288,7 @@ int main(int argc, char* argv[])
             c == ','
         )
         {
-            push_token(&tokens, c, i, i+1);
+            push_token(&tokens, file_data, c, i, i+1);
             i++;
         }
 
@@ -247,7 +312,7 @@ int main(int argc, char* argv[])
                     break;
                 }
             }
-            push_token(&tokens, TOKEN_STRING, start, i-1);
+            push_token(&tokens, file_data, TOKEN_STRING, start, i-1);
         }
 
         // lex numbers
@@ -281,7 +346,7 @@ int main(int argc, char* argv[])
             if (found_next_token)
             {
                 i--;
-                push_token(&tokens, TOKEN_NUMBER, start, i);
+                push_token(&tokens, file_data, TOKEN_NUMBER, start, i);
             }
         }
         // handle unrecognized characters
@@ -312,13 +377,13 @@ int main(int argc, char* argv[])
     // while (current_node != NULL && i < 50)
     // {
     //     token *current_token = current_node->data;
-    //     i32 string_length = current_token->end_index - current_token->start_index;
+    //     i32 string_length = current_token->length;
     //     char* blue = "\033[36m";
     //     char* reset = "\033[0m";
     //     if (string_length > 0 && string_length < 20)
     //     {
     //         printf("%s`%s", blue, reset);
-    //         printf("%.*s", string_length, &file_data[current_token->start_index]);
+    //         printf("%.*s", string_length, current_token->starting_character);
     //         printf("%s`%s ", blue, reset);
     //     }
 
@@ -328,8 +393,8 @@ int main(int argc, char* argv[])
     // puts("");
     
     // token *current_token = tokens.last->data;
-    // i32 string_length = current_token->end_index - current_token->start_index;
-    // printf("%.*s", string_length, &file_data[current_token->start_index]);
+    // i32 string_length = current_token->length;
+    // printf("%.*s", string_length, current_token->starting_character);
 
     return 0;
 }
