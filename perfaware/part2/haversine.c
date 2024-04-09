@@ -60,26 +60,110 @@ void push_token(linked_list *list, token_type type, u32 start, u32 end)
     current_token->start_index = start;
     current_token->end_index = end;
 
-    list_node *node = list_push_back(list);
-    node->data = current_token;
+    list_push_back(list, current_token);
 }
 
-json_object parse(linked_list tokens)
+json_object *parse(linked_list *tokens)
 {
-    list_node *node = tokens.first;
-    token *current_token = node->data;
+    token *current_token = tokens->first->data;
+    
+    // parse lists
     if ('[' == current_token->type)
     {
         puts("ey we got a [");
+
+        tokens->first = tokens->first->next;
+        current_token = tokens->first->data;
+
+        linked_list json_list = list_create();
+
+        json_object *return_value = (json_object* )calloc(1, sizeof(json_object));
+        return_value->type = JSON_LIST;
+        return_value->list = json_list;
+
+        if (']' == current_token->type)
+        {
+            puts("closing with a ]");
+            tokens->first = tokens->first->next;
+            return return_value;
+        }
+        while (tokens->first != NULL)
+        {
+            json_object *result = parse(tokens);
+            list_push_back(&json_list, result);
+
+            current_token = tokens->first->data;
+            if (']' == current_token->type)
+            {
+                puts("closing with a ]");
+                tokens->first = tokens->first->next;
+                return return_value;
+            }
+            else if (',' == current_token->type)
+            {
+                tokens->first = tokens->first->next;
+            }
+            else
+            {
+                printf("Expected comma after array object. Got token of type: %c\n", current_token->type);
+                exit(0);
+            }
+        }
+        printf("Expected ']' at the end of an array. Got EOL instead.\n");
+        exit(0);
+        return NULL;
     }
+
+    // parse objects
     else if ('{' == current_token->type)
     {
         puts("hoo boy, we got a {");
+
+        tokens->first = tokens->first->next;
+        current_token = tokens->first->data;
+
+        hashtable json_dict = allocate_table();
+
+        json_object *return_value = (json_object* )calloc(1, sizeof(json_object));
+        return_value->type = JSON_DICTIONARY;
+        return_value->dictionary = json_dict;
+
+        if ('}' == current_token->type)
+        {
+            puts("closing with a }");
+            tokens->first = tokens->first->next;
+            return return_value;
+        }
+        else
+        {
+            while (tokens->first != NULL)
+            {
+                if ('}' == current_token->type)
+                {
+                    puts("closing with a }");
+                    tokens->first = tokens->first->next;
+                    return return_value;
+                }
+                else
+                {
+                    printf("Expected '}'. Got token of type: %c\n", current_token->type);
+                    exit(0);
+                }
+            }
+            printf("Expected '}' at the end of an array. Got EOL instead.\n");
+        }
     }
     else
     {
         printf("oh no, we got something I don't recognize of type: %c\n", current_token->type);
+        exit(0);
+        return NULL;
     }
+}
+
+json_object *start_parse(linked_list tokens)
+{
+    return parse(&tokens);
 }
 
 int main(int argc, char* argv[])
@@ -114,7 +198,6 @@ int main(int argc, char* argv[])
     // because I immediately overwrite the data by reading from a file
     // but maybe it'll prevent some weird bug I otherwise never would've found.
     
-    // fread(file_data, sizeof(char), 1000, file);
     fread(file_data, sizeof(char), file_length, file);
     fclose(file);
     file = NULL;
@@ -220,9 +303,7 @@ int main(int argc, char* argv[])
 
 
     // Syntactic Analysis (Parsing)
-    parse(tokens);
-    tokens.first = tokens.first->next;
-    parse(tokens);
+    start_parse(tokens);
 
     // // Debug: print lexer tokens
     // list_node *current_node = tokens.first;

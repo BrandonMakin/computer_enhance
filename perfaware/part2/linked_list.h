@@ -14,7 +14,7 @@ typedef struct linked_list{
 } linked_list;
 
 linked_list list_create(void);
-list_node* list_push_back(linked_list *l);
+void list_push_back(linked_list *l, void *data);
 list_node* list_pop_front(linked_list *l);
 bool list_delete_front(linked_list *l, bool free_data);
 

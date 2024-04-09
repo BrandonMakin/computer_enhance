@@ -9,7 +9,7 @@ linked_list list_create(void)
     return list;
 }
 
-list_node* list_push_back(linked_list *l)
+void list_push_back(linked_list *l, void *data)
 {
     list_node *node = (list_node*)calloc(1, sizeof(node));
     if (l->first == NULL)
@@ -21,7 +21,7 @@ list_node* list_push_back(linked_list *l)
         l->last->next = node;
     }
     l->last = node;
-    return node;
+    node->data = data;
 }
 
 list_node* list_pop_front(linked_list *l)
@@ -67,20 +67,14 @@ bool list_delete_front(linked_list *l, bool free_data)
 void linked_list_demo(void)
 {
     linked_list list = list_create();
-    list_node *current = list_push_back(&list);
-    current->data = "I'm";
-    current = list_push_back(&list);
-    current->data = "headed";
-    current = list_push_back(&list);
-    current->data = "straight";
-    current = list_push_back(&list);
-    current->data = "for";
-    current = list_push_back(&list);
-    current->data = "the";
-    current = list_push_back(&list);
-    current->data = "floor.";
+    list_push_back(&list, "I'm");
+    list_push_back(&list, "headed");
+    list_push_back(&list, "straight");
+    list_push_back(&list, "for");
+    list_push_back(&list, "the");
+    list_push_back(&list, "floor.");
 
-    current = list.first;
+    list_node *current = list.first;
     while (current != NULL)
     {
         printf("%s ", (char*)current->data);
