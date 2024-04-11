@@ -56,23 +56,5 @@ int main(int argc, char* argv[])
 
     json_object *coordinates = json_from_string(file_data, file_length);
 
-    puts(coordinates->type == JSON_DICTIONARY ? "true" : "false");
-
-    json_object *pairs = table_get(coordinates->dictionary, "pairs");
-    puts(pairs->type == JSON_LIST ? "true" : "false");
-
-    list_node *current = pairs->list.first;
-    for (int j = 0; j < 5; j++)
-    {
-        json_object *coord = current->data;
-        puts(coord->type == JSON_DICTIONARY ? "idx is a dict" : "idx is not a dict");
-
-        printf("address of x0: %p\n", table_get(coord->dictionary, "x0"));
-        printf("address of x1: %p\n", table_get(coord->dictionary, "x1"));
-        printf("address of y0: %p\n", table_get(coord->dictionary, "y0"));
-        printf("address of y1: %p\n", table_get(coord->dictionary, "y1"));
-    }
-    puts("");
-
     return 0;
 }
