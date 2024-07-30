@@ -11,7 +11,7 @@ linked_list list_create(void)
 
 void list_push_back(linked_list *l, void *data)
 {
-    list_node *node = (list_node*)calloc(1, sizeof(node));
+    list_node *node = (list_node*)calloc(1, sizeof(list_node));
     if (l->first == NULL)
     {
         l->first = node;

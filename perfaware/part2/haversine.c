@@ -6,6 +6,7 @@
 #include "hashtable.h"
 #include "linked_list.h"
 #include "json.h"
+#include "cpu_timer.h"
 
 typedef int32_t i32;
 typedef int64_t i64;
@@ -68,6 +69,8 @@ static f64 ReferenceHaversine(f64 X0, f64 Y0, f64 X1, f64 Y1, f64 EarthRadius)
 
 int main(int argc, char* argv[])
 {
+    printf("CPUFreq: %llu\n", CPUFreq());
+
     char* file_name;
     if (argc > 1)
     {

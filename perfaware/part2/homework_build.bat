@@ -1,0 +1,1 @@
+call cl /Fe: _result.exe haversine.c json.c linked_list.c hashtable.c cpu_timer.c
