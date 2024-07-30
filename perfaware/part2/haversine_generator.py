@@ -2,7 +2,7 @@ import json
 import random
 from math import radians, sin, cos, sqrt, asin, floor
 
-out_file = "haversine.json"
+out_file = "haversine_small.json"
 
 pairs = []
 
@@ -60,7 +60,7 @@ def HaversineOfDegrees(X0, Y0, X1, Y1, R):
 def average_of_haversines():
     print("\033[42;1mResult: ...\033[0m",end="")
     global pairs
-    EarthRadiuskm = 6371
+    EarthRadiuskm = 6372.8 #6371
     Sum = sum(HaversineOfDegrees(Pair['x0'], Pair['y0'], Pair['x1'], Pair['y1'], EarthRadiuskm) for Pair in pairs)
     Count = len(pairs)
     Average = Sum / Count
@@ -68,6 +68,6 @@ def average_of_haversines():
     print("\r\033[42;1mResult: " + str(Average) + "\033[0m")
 
 
-generate(1_000_000)
+generate(1_000)
 # generate(10_000_000)
 average_of_haversines()

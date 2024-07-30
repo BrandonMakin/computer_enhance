@@ -37,7 +37,7 @@ linked_list lex(char *data_string, u32 data_length)
         }
 
         // lex whitespace
-        else if (c == ' ')
+        else if (c == ' ' | c == '\n')
         {
             i++;
         }
@@ -142,7 +142,6 @@ json_object *parse(linked_list *tokens)
                 if (']' == current_token->type)
                 {
                     if (tokens->first != tokens->last) {tokens->first = tokens->first->next;}
-                    printf("return_value->list.first: %p\n", return_value->list.first);
                     return return_value;
                 }
                 else if (',' == current_token->type)
@@ -262,7 +261,7 @@ json_object *parse(linked_list *tokens)
             i64 exponent = 0;
 
             u32 i = 0;
-            bool is_negative;
+            bool is_negative = false;
 
             if ('-' == string[0])
             {                
@@ -279,7 +278,6 @@ json_object *parse(linked_list *tokens)
                     ++i;
                 }
             }
-            
             if ('.' == string[0] ||
                 'e' == string[0] ||
                 'E' == string[0] )
@@ -365,11 +363,9 @@ json_object *json_from_string(char *data_string, u32 data_length)
 {
     // Lexical analysis
     linked_list tokens = lex(data_string, data_length);
-    puts("Lexical analysis completed successfully!");
 
     // Syntactic Analysis (Parsing)
     json_object *return_value = start_parse(tokens);
-    puts("Syntactic analysis completed successfully!");
 
     return return_value;
 }
