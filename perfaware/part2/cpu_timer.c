@@ -20,7 +20,7 @@ static u64 ReadOSTimer(void)
 	return Value.QuadPart;
 }
 
-inline u64 ReadCPUTimer(void)
+u64 ReadCPUTimer(void)
 {
 	// NOTE(casey): If you were on ARM, you would need to replace __rdtsc
 	// with one of their performance counter read instructions, depending
@@ -29,7 +29,7 @@ inline u64 ReadCPUTimer(void)
 	return __rdtsc();
 }
 
-u64 CPUFreq()
+u64 EstimateCPUTimerFreq(void)
 {
 	u64 MillisecondsToWait = 1000;
 

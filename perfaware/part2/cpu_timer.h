@@ -5,6 +5,7 @@
 
 typedef uint64_t u64;
 
-u64 CPUFreq();
+u64 ReadCPUTimer(void);
+u64 EstimateCPUTimerFreq(void);
 
 #endif //CPU_TIMER_H

@@ -3,6 +3,7 @@
         "stdint.h": "c",
         "stdio.h": "c",
         "linked_list.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "cpu_timer.h": "c"
     }
 }

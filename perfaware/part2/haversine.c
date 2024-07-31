@@ -69,7 +69,9 @@ static f64 ReferenceHaversine(f64 X0, f64 Y0, f64 X1, f64 Y1, f64 EarthRadius)
 
 int main(int argc, char* argv[])
 {
-    printf("CPUFreq: %llu\n", CPUFreq());
+    u64 cpu_freq_clocks_per_ms = EstimateCPUTimerFreq();
+    u64 time0 = ReadCPUTimer();
+    printf("ReadCPUTimer: %llu\n", ReadCPUTimer());
 
     char* file_name;
     if (argc > 1)
@@ -81,12 +83,15 @@ int main(int argc, char* argv[])
         file_name = "haversine.json";
     }
     printf("reading: %s\n", file_name);
+    
+    u64 time1 = ReadCPUTimer();
     FILE *file = fopen(file_name, "rb");
     if (file == NULL)
     {
         printf("Can't open \"%s\"\n", file_name);
         return 1;
     }
+    u64 time2 = ReadCPUTimer();
 
     // Get the length of the file by reading in binary mode, seeking to the end
     // and saving the file position indicator.
@@ -109,7 +114,12 @@ int main(int argc, char* argv[])
     f64 Average = 0;
     u64 Count = 0;
 
+    u64 time3 = ReadCPUTimer();
+
     json_object *data = json_from_string(file_data, file_length);
+    
+    u64 time4 = ReadCPUTimer();
+
     json_object *pairs = table_get(data->dictionary, "pairs");
 
     list_node *current = pairs->list.first;
@@ -118,9 +128,10 @@ int main(int argc, char* argv[])
         Count++;
         current = current->next;
     }
+    printf("hello 3\n");
     f64 SumCoefficient = 1/(f64)Count;
     // printf("SumCoef: %f\n", SumCoefficient);
-    printf("pair count: %lli", Count);
+    printf("pair count: %lli\n", Count);
 
     current = pairs->list.first;
     for (int j = 0; /*j < 5 &&*/ current != NULL; j++)
@@ -141,8 +152,22 @@ int main(int argc, char* argv[])
         current = current->next;
     }
 
+    u64 time5 = ReadCPUTimer();
+
     // f64 Average = Sum / Count;
-    printf("\nAverage: %.16f\n", Average);
+    printf("\nAverage: %.16f\n\n", Average);
+
+    u64 time6 = ReadCPUTimer();
+
+    u64 total_time = time6-time0;
+    printf("Total time: %.4f ms (CPU freq %llu)\n", 1000 * (f64)total_time/cpu_freq_clocks_per_ms, total_time);
+
+    printf("  Startup:     %12llu  (%.4f%%) \n", time1-time0, 100*(time1-time0)/(f64)total_time);
+    printf("  Read:        %12llu  (%.4f%%) \n", time2-time1, 100*(time2-time1)/(f64)total_time);
+    printf("  Misc Setup:  %12llu  (%.4f%%) \n", time3-time2, 100*(time3-time2)/(f64)total_time);
+    printf("  Parse:       %12llu  (%.4f%%) \n", time4-time3, 100*(time4-time3)/(f64)total_time);
+    printf("  Sum:         %12llu  (%.4f%%) \n", time5-time4, 100*(time5-time4)/(f64)total_time);
+    printf("  Misc Output: %12llu  (%.4f%%) \n", time6-time5, 100*(time6-time5)/(f64)total_time);
 
     return 0;
 }

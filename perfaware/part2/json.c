@@ -37,7 +37,7 @@ linked_list lex(char *data_string, u32 data_length)
         }
 
         // lex whitespace
-        else if (c == ' ' | c == '\n')
+        else if (c == ' ' || c == '\n' || c == '\r')
         {
             i++;
         }
