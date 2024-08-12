@@ -3,13 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "hashtable.h"
 #include "hashtable.c"
-#include "linked_list.h"
 #include "linked_list.c"
-#include "json.h"
 #include "json.c"
-#include "cpu_timer.h"
 #include "cpu_timer.c"
 
 typedef int32_t i32;
