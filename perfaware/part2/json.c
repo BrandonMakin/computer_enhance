@@ -5,7 +5,7 @@
 
 void push_token(linked_list *list, char *source_data, token_type type, u32 start, u32 end)
 {
-    token *current_token = malloc(sizeof(token));
+    token *current_token = (token *)malloc(sizeof(token));
     current_token->type = type;
     current_token->string_pointer = source_data + start;
     current_token->length = end - start;
@@ -32,7 +32,7 @@ linked_list lex(char *data_string, u32 data_length)
             c == ','
         )
         {
-            push_token(&tokens, data_string, c, i, i+1);
+            push_token(&tokens, data_string, (token_type)c, i, i+1);
             i++;
         }
 
@@ -114,16 +114,16 @@ linked_list lex(char *data_string, u32 data_length)
 
 json_object *parse(linked_list *tokens)
 {
-    token *current_token = tokens->first->data;
+    token *current_token = (token *)tokens->first->data;
     switch (current_token->type)
     {
         // parse arrays
         case '[':
         {
             if (tokens->first != tokens->last) {tokens->first = tokens->first->next;}
-            current_token = tokens->first->data;
+            current_token = (token *)tokens->first->data;
 
-            json_object *return_value = calloc(1, sizeof(json_object));
+            json_object *return_value = (json_object *)calloc(1, sizeof(json_object));
             return_value->type = JSON_LIST;
             return_value->list = list_create();
             if (']' == current_token->type)
@@ -138,7 +138,7 @@ json_object *parse(linked_list *tokens)
                 list_push_back(&return_value->list, result);
                 // printf("json_list.last: %p\t", json_list.last);
                 // puts((result == json_list.last) ? "matches" : "doesn't match");
-                current_token = tokens->first->data;
+                current_token = (token *)tokens->first->data;
                 if (']' == current_token->type)
                 {
                     if (tokens->first != tokens->last) {tokens->first = tokens->first->next;}
@@ -164,11 +164,11 @@ json_object *parse(linked_list *tokens)
         case '{':
         {
             if (tokens->first != tokens->last) {tokens->first = tokens->first->next;}
-            current_token = tokens->first->data;
+            current_token = (token *)tokens->first->data;
 
             hashtable json_dict = allocate_table();
 
-            json_object *return_value = calloc(1, sizeof(json_object));
+            json_object *return_value = (json_object *)calloc(1, sizeof(json_object));
             return_value->type = JSON_DICTIONARY;
             return_value->dictionary = json_dict;
 
@@ -181,7 +181,7 @@ json_object *parse(linked_list *tokens)
             {
                 while (tokens->first != NULL)
                 {
-                    current_token = tokens->first->data;
+                    current_token = (token *)tokens->first->data;
                     switch (current_token->type)
                     {
                         case TOKEN_STRING:
@@ -191,12 +191,12 @@ json_object *parse(linked_list *tokens)
 
                             {
                                 u32 key_len = current_token->length;
-                                key = calloc(key_len + 1, sizeof(char));
+                                key = (char *)calloc(key_len + 1, sizeof(char));
                                 strncpy(key, current_token->string_pointer, key_len);
                             }
 
                             if (tokens->first != tokens->last) {tokens->first = tokens->first->next;}
-                            current_token = tokens->first->data;
+                            current_token = (token *)tokens->first->data;
 
                             if (':' != current_token->type)
                             {
@@ -212,7 +212,7 @@ json_object *parse(linked_list *tokens)
                             table_set(json_dict, key, value);
 
                             if (tokens->first != tokens->last) {tokens->first = tokens->first->next;}
-                            current_token = tokens->first->data;
+                            current_token = (token *)tokens->first->data;
                             
                             if (',' != current_token->type)
                             {
@@ -328,7 +328,7 @@ json_object *parse(linked_list *tokens)
             number *= exponent;
             if (is_negative) {number *= -1;}
 
-            json_object *return_value = calloc(1, sizeof(json_object));
+            json_object *return_value = (json_object *)calloc(1, sizeof(json_object));
             return_value->type = JSON_NUMBER;
             return_value->number = number;
             return return_value;

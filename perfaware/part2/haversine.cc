@@ -4,9 +4,13 @@
 #include <math.h>
 
 #include "hashtable.h"
+#include "hashtable.c"
 #include "linked_list.h"
+#include "linked_list.c"
 #include "json.h"
+#include "json.c"
 #include "cpu_timer.h"
+#include "cpu_timer.c"
 
 typedef int32_t i32;
 typedef int64_t i64;
@@ -16,7 +20,8 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef double f64;
 
-void pretty_print_data_size(data_size)
+
+void pretty_print_data_size(u32 data_size)
 {
     printf("(File is %d bytes", data_size);
     if (data_size > (1<<30))
@@ -102,7 +107,7 @@ int main(int argc, char* argv[])
     pretty_print_data_size(file_length);
 
 
-    char* file_data = calloc(file_length, sizeof(char));
+    char* file_data = (char*)calloc(file_length, sizeof(char));
     // using calloc instead of malloc to initialize bytes to 0 may be pointless
     // because I immediately overwrite the data by reading from a file
     // but maybe it'll prevent some weird bug I otherwise never would've found.
@@ -120,7 +125,7 @@ int main(int argc, char* argv[])
     
     u64 time4 = ReadCPUTimer();
 
-    json_object *pairs = table_get(data->dictionary, "pairs");
+    json_object *pairs = (json_object*)table_get(data->dictionary, "pairs");
 
     list_node *current = pairs->list.first;
     for (int j = 0; /*j < 5 &&*/ current != NULL; j++)
@@ -136,7 +141,7 @@ int main(int argc, char* argv[])
     current = pairs->list.first;
     for (int j = 0; /*j < 5 &&*/ current != NULL; j++)
     {
-        json_object *coordinates = current->data;
+        json_object *coordinates = (json_object*)current->data;
         f64 x0 = ((json_object* )table_get(coordinates->dictionary, "x0"))->number;
         f64 x1 = ((json_object* )table_get(coordinates->dictionary, "x1"))->number;
         f64 y0 = ((json_object* )table_get(coordinates->dictionary, "y0"))->number;

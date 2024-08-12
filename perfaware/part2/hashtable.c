@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "hashtable.h"
 
@@ -60,7 +61,7 @@ entry table_get_recursive(hashtable table, char **keys, char key_count)
     hashtable current = table;
     for (int i = 0; i < key_count - 1; ++i)
     {
-        current = table_get(current, keys[i]);
+        current = (hashtable)table_get(current, keys[i]);
     }
 
     return table_get(current, keys[key_count - 1]);
@@ -73,7 +74,7 @@ bool table_set_recursive(hashtable table, char **keys, char key_count, entry val
     hashtable current = table;
     for (int i = 0; i < key_count - 1; ++i)
     {
-        hashtable new_table = table_get(current, keys[i]);
+        hashtable new_table = (hashtable)table_get(current, keys[i]);
         if (new_table == NULL)
         {
             new_table = allocate_table();
@@ -108,27 +109,29 @@ void hashtable_demo(void)
 
     // use the data
     printf("Printing table_get with \"%s\"\n", key1);
-    puts(table_get(table, key1));
+    puts((char *)table_get(table, key1));
 
     puts("");
     puts("Printing table_get with \"loverman\"");
-    puts(table_get(subtable, "loverman"));
+    puts((char *)table_get(subtable, "loverman"));
 
     puts("");
     puts("Printing \"loverman\" by getting a table within a table");
-    hashtable subtable_ref_2 = table_get(table, "ricky");
-    puts(table_get(subtable_ref_2, "loverman"));
+    hashtable subtable_ref_2 = (hashtable)table_get(table, "ricky");
+    puts((char *)table_get(subtable_ref_2, "loverman"));
 
     puts("");
     puts("Printing \"line without a hook\" as a subtable one-liner");
-    puts(table_get(table_get(table, "ricky"), "line without a hook"));
+    puts((char *)table_get((hashtable)table_get(table, "ricky"), "line without a hook"));
 
     puts("");
     puts("Printing \"loverman\" with table_get_recursive");
-    puts(table_get_recursive(table, (char*[]){"ricky", "loverman"}, 2));
+    char* strs1[] = {"ricky", "loverman"};
+    puts((char *)table_get_recursive(table, strs1, 2));
     
     puts("");
     puts("table_get_recursive stress test");
-    puts(table_get_recursive(table, (char*[]){"ricky", "california", "why"}, 3));
-    puts(table_get_recursive(table, keys, 5));
+    char* strs2[] = {"ricky", "california", "why"};
+    puts((char *)table_get_recursive(table, strs2, 3));
+    puts((char *)table_get_recursive(table, keys, 5));
 }
