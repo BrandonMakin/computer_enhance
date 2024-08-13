@@ -3,11 +3,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "hashtable.c"
-#include "linked_list.c"
-#include "json.c"
-#include "cpu_timer.c"
-
 typedef int32_t i32;
 typedef int64_t i64;
 
@@ -16,9 +11,15 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef double f64;
 
+#include "cpu_timer.c"
+#include "hashtable.c"
+#include "linked_list.c"
+#include "json.c"
 
 void pretty_print_data_size(u32 data_size)
 {
+    TimeFunction;
+    
     printf("(File is %d bytes", data_size);
     if (data_size > (1<<30))
         printf(" (%d GiB)", data_size/(1<<30));
@@ -44,6 +45,7 @@ static f64 RadiansFromDegrees(f64 Degrees)
 // NOTE(casey): EarthRadius is generally expected to be 6372.8
 static f64 ReferenceHaversine(f64 X0, f64 Y0, f64 X1, f64 Y1, f64 EarthRadius)
 {
+    TimeFunction;
     /* NOTE(casey): This is not meant to be a "good" way to calculate the Haversine distance.
        Instead, it attempts to follow, as closely as possible, the formula used in the real-world
        question on which these homework exercises are loosely based.
@@ -68,13 +70,13 @@ static f64 ReferenceHaversine(f64 X0, f64 Y0, f64 X1, f64 Y1, f64 EarthRadius)
     return Result;
 }
 
-int main(int argc, char* argv[])
-{
-    u64 cpu_freq_clocks_per_ms = EstimateCPUTimerFreq();
-    u64 time0 = ReadCPUTimer();
-    printf("ReadCPUTimer: %llu\n", ReadCPUTimer());
+void sum_and_average(json_object *data, u64 &Count, f64 &Average);
 
-    char* file_name;
+void copy_file_to_array(char *&file_data, u32 file_length, FILE *&file);
+
+int get_file_data(int argc, char *&file_name, char *argv[], FILE *&file, u32 &file_length)
+{
+    TimeFunction;
     if (argc > 1)
     {
         file_name = argv[1];
@@ -84,44 +86,72 @@ int main(int argc, char* argv[])
         file_name = "haversine.json";
     }
     printf("reading: %s\n", file_name);
-    
-    u64 time1 = ReadCPUTimer();
-    FILE *file = fopen(file_name, "rb");
+
+    file = fopen(file_name, "rb");
     if (file == NULL)
     {
         printf("Can't open \"%s\"\n", file_name);
         return 1;
     }
-    u64 time2 = ReadCPUTimer();
 
     // Get the length of the file by reading in binary mode, seeking to the end
     // and saving the file position indicator.
     fseek(file, 0, SEEK_END);
-    u32 file_length = ftell(file);
+    file_length = ftell(file);
     fseek(file, 0L, SEEK_SET);
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    u64 cpu_freq_clocks_per_ms = EstimateCPUTimerFreq();
+    printf("ReadCPUTimer: %llu\n", ReadCPUTimer());
+    BeginProfile();
+
+    char* file_name;
+    u32 file_length;
+    FILE *file;
+
+    int error = get_file_data(argc, file_name, argv, file, file_length);
+    if (error)
+        return 1;
 
     pretty_print_data_size(file_length);
 
 
-    char* file_data = (char*)calloc(file_length, sizeof(char));
-    // using calloc instead of malloc to initialize bytes to 0 may be pointless
-    // because I immediately overwrite the data by reading from a file
-    // but maybe it'll prevent some weird bug I otherwise never would've found.
-    
-    fread(file_data, sizeof(char), file_length, file);
-    fclose(file);
-    file = NULL;
+    char* file_data;
+    copy_file_to_array(file_data, file_length, file);
 
     f64 Average = 0;
     u64 Count = 0;
 
-    u64 time3 = ReadCPUTimer();
-
     json_object *data = json_from_string(file_data, file_length);
-    
-    u64 time4 = ReadCPUTimer();
 
-    json_object *pairs = (json_object*)table_get(data->dictionary, "pairs");
+    sum_and_average(data, Count, Average);
+
+    // f64 Average = Sum / Count;
+    printf("\nAverage: %.16f\n\n", Average);
+
+    EndAndPrintProfile();
+}
+
+void copy_file_to_array(char *&file_data, u32 file_length, FILE *&file)
+{
+    TimeFunction;
+    file_data = (char *)calloc(file_length, sizeof(char));
+    // using calloc instead of malloc to initialize bytes to 0 may be pointless
+    // because I immediately overwrite the data by reading from a file
+    // but maybe it'll prevent some weird bug I otherwise never would've found.
+
+    fread(file_data, sizeof(char), file_length, file);
+    fclose(file);
+    file = NULL;
+}
+
+void sum_and_average(json_object *data, u64 &Count, f64 &Average)
+{
+    TimeFunction;
+    json_object *pairs = (json_object *)table_get(data->dictionary, "pairs");
 
     list_node *current = pairs->list.first;
     for (int j = 0; /*j < 5 &&*/ current != NULL; j++)
@@ -129,19 +159,19 @@ int main(int argc, char* argv[])
         Count++;
         current = current->next;
     }
-    printf("hello 3\n");
-    f64 SumCoefficient = 1/(f64)Count;
+
+    f64 SumCoefficient = 1 / (f64)Count;
     // printf("SumCoef: %f\n", SumCoefficient);
     printf("pair count: %lli\n", Count);
 
     current = pairs->list.first;
     for (int j = 0; /*j < 5 &&*/ current != NULL; j++)
     {
-        json_object *coordinates = (json_object*)current->data;
-        f64 x0 = ((json_object* )table_get(coordinates->dictionary, "x0"))->number;
-        f64 x1 = ((json_object* )table_get(coordinates->dictionary, "x1"))->number;
-        f64 y0 = ((json_object* )table_get(coordinates->dictionary, "y0"))->number;
-        f64 y1 = ((json_object* )table_get(coordinates->dictionary, "y1"))->number;
+        json_object *coordinates = (json_object *)current->data;
+        f64 x0 = ((json_object *)table_get(coordinates->dictionary, "x0"))->number;
+        f64 x1 = ((json_object *)table_get(coordinates->dictionary, "x1"))->number;
+        f64 y0 = ((json_object *)table_get(coordinates->dictionary, "y0"))->number;
+        f64 y1 = ((json_object *)table_get(coordinates->dictionary, "y1"))->number;
 
         // printf("\"x0\":%.16f, \"y0\":%.16f, \"x1\":%.16f, \"y1\":%.16f\t", x0, y0, x1, y1);
 
@@ -152,23 +182,6 @@ int main(int argc, char* argv[])
 
         current = current->next;
     }
-
-    u64 time5 = ReadCPUTimer();
-
-    // f64 Average = Sum / Count;
-    printf("\nAverage: %.16f\n\n", Average);
-
-    u64 time6 = ReadCPUTimer();
-
-    u64 total_time = time6-time0;
-    printf("Total time: %.4f ms (CPU freq %llu)\n", 1000 * (f64)total_time/cpu_freq_clocks_per_ms, total_time);
-
-    printf("  Startup:     %12llu  (%.4f%%) \n", time1-time0, 100*(time1-time0)/(f64)total_time);
-    printf("  Read:        %12llu  (%.4f%%) \n", time2-time1, 100*(time2-time1)/(f64)total_time);
-    printf("  Misc Setup:  %12llu  (%.4f%%) \n", time3-time2, 100*(time3-time2)/(f64)total_time);
-    printf("  Parse:       %12llu  (%.4f%%) \n", time4-time3, 100*(time4-time3)/(f64)total_time);
-    printf("  Sum:         %12llu  (%.4f%%) \n", time5-time4, 100*(time5-time4)/(f64)total_time);
-    printf("  Misc Output: %12llu  (%.4f%%) \n", time6-time5, 100*(time6-time5)/(f64)total_time);
-
-    return 0;
 }
+
+static_assert(__COUNTER__ < ArrayCount(profiler::Anchors), "Number of profile points exceeds size of profiler::Anchors array");

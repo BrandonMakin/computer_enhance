@@ -15,6 +15,7 @@ void push_token(linked_list *list, char *source_data, token_type type, u32 start
 
 linked_list lex(char *data_string, u32 data_length)
 {
+    TimeFunction;
     linked_list tokens = list_create();
     u32 i = 0;
 
@@ -355,6 +356,7 @@ json_object *parse(linked_list *tokens)
 
 json_object *start_parse(linked_list tokens)
 {
+    TimeFunction;
     json_object *rv = parse(&tokens);
     return rv;
 }
