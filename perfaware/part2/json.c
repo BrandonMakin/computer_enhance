@@ -115,6 +115,7 @@ linked_list lex(char *data_string, u32 data_length)
 
 json_object *parse(linked_list *tokens)
 {
+    TimeFunction;
     token *current_token = (token *)tokens->first->data;
     switch (current_token->type)
     {

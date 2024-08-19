@@ -45,7 +45,6 @@ static f64 RadiansFromDegrees(f64 Degrees)
 // NOTE(casey): EarthRadius is generally expected to be 6372.8
 static f64 ReferenceHaversine(f64 X0, f64 Y0, f64 X1, f64 Y1, f64 EarthRadius)
 {
-    TimeFunction;
     /* NOTE(casey): This is not meant to be a "good" way to calculate the Haversine distance.
        Instead, it attempts to follow, as closely as possible, the formula used in the real-world
        question on which these homework exercises are loosely based.
@@ -104,7 +103,6 @@ int get_file_data(int argc, char *&file_name, char *argv[], FILE *&file, u32 &fi
 
 int main(int argc, char *argv[])
 {
-    u64 cpu_freq_clocks_per_ms = EstimateCPUTimerFreq();
     printf("ReadCPUTimer: %llu\n", ReadCPUTimer());
     BeginProfile();
 
@@ -184,4 +182,4 @@ void sum_and_average(json_object *data, u64 &Count, f64 &Average)
     }
 }
 
-static_assert(__COUNTER__ < ArrayCount(profiler::Anchors), "Number of profile points exceeds size of profiler::Anchors array");
+ProfilerEndOfCompilationUnit;
