@@ -1,3 +1,5 @@
 .DS_Store
 perfaware/part1/c_8086_decompiler.dSYM/
 *.out
+/perfaware/part3/build
+/perfaware/part3/data
