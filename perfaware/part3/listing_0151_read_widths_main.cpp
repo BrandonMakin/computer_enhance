@@ -50,6 +50,7 @@ extern "C" void Read_4x2(u64 Count, u8 *Data);
 extern "C" void Read_8x2(u64 Count, u8 *Data);
 extern "C" void Read_16x2(u64 Count, u8 *Data);
 extern "C" void Read_32x2(u64 Count, u8 *Data);
+extern "C" void Read_64x2(u64 Count, u8 *Data);
 #pragma comment (lib, "listing_0150_read_widths")
 
 struct test_function
@@ -63,6 +64,7 @@ test_function TestFunctions[] =
     {"Read_8x2", Read_8x2},
     {"Read_16x2", Read_16x2},
     {"Read_32x2", Read_32x2},
+    {"Read_64x2", Read_64x2},
 };
 
 int main(void)
