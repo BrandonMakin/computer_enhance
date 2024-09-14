@@ -29,7 +29,7 @@ section .text
 Read_x1:
 	align 64
 .loop:
-    mov rax, [rdx]
+    mov qword [rdx], 0
     sub rcx, 1
     jnle .loop
     ret
@@ -37,8 +37,8 @@ Read_x1:
 Read_x2:
 	align 64
 .loop:
-    mov rax, [rdx]
-    mov rax, [rdx]
+    mov qword [rdx], 0
+    mov qword [rdx], 0
     sub rcx, 2
     jnle .loop
     ret
@@ -46,9 +46,9 @@ Read_x2:
 Read_x3:
     align 64
 .loop:
-    mov rax, [rdx]
-    mov rax, [rdx]
-    mov rax, [rdx]
+    mov qword [rdx], 0
+    mov qword [rdx], 0
+    mov qword [rdx], 0
     sub rcx, 3
     jnle .loop
     ret
@@ -56,10 +56,10 @@ Read_x3:
 Read_x4:
 	align 64
 .loop:
-    mov rax, [rdx]
-    mov rax, [rdx]
-    mov rax, [rdx]
-    mov rax, [rdx]
+    mov qword [rdx], 0
+    mov qword [rdx], 0
+    mov qword [rdx], 0
+    mov qword [rdx], 0
     sub rcx, 4
     jnle .loop
     ret

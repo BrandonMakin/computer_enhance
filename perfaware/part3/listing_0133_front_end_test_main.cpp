@@ -82,6 +82,7 @@ int main(int ArgCount, char **Args)
         if(Params.Dest.Count > 0)
         {
             repetition_tester Testers[ArrayCount(TestFunctions)] = {};
+    printf("freak: %llu\n", GetCPUTimerFreq());
             
             for(;;)
             {
@@ -94,6 +95,8 @@ int main(int ArgCount, char **Args)
                     NewTestWave(Tester, Params.Dest.Count, GetCPUTimerFreq());
                     TestFunc.Func(Tester, &Params);
                 }
+    printf("freak: %llu\n", GetCPUTimerFreq());
+
             }
             
             // NOTE(casey): We would normally call this here, but we can't because the compiler will complain about "unreachable code".
