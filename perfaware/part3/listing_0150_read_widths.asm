@@ -17,8 +17,14 @@
 global Read_4x2
 global Read_8x2
 global Read_16x2
+global Read_32x1
 global Read_32x2
+global Read_32x3
+global Read_32x4
+global Read_64x1
 global Read_64x2
+global Read_64x3
+global Read_64x4
 
 section .text
 
@@ -64,6 +70,16 @@ Read_16x2:
     jb .loop
     ret
 
+Read_32x1:
+    xor rax, rax
+	align 64
+.loop:
+    vmovdqu ymm0, [rdx]
+    add rax, 32
+    cmp rax, rcx
+    jb .loop
+    ret
+
 Read_32x2:
     xor rax, rax
 	align 64
@@ -75,13 +91,73 @@ Read_32x2:
     jb .loop
     ret
 
+Read_32x3:
+    xor rax, rax
+	align 64
+.loop:
+    vmovdqu ymm0, [rdx]
+    vmovdqu ymm0, [rdx + 32]
+    vmovdqu ymm0, [rdx + 64]
+    add rax, 96
+    cmp rax, rcx
+    jb .loop
+    ret
+
+Read_32x4:
+    xor rax, rax
+	align 64
+.loop:
+    vmovdqu ymm0, [rdx]
+    vmovdqu ymm0, [rdx + 32]
+    vmovdqu ymm0, [rdx + 64]
+    vmovdqu ymm0, [rdx + 96]
+    add rax, 128
+    cmp rax, rcx
+    jb .loop
+    ret
+
+Read_64x1:
+    xor rax, rax
+	align 64
+.loop:
+    vmovdqu64 zmm0, [rdx]
+    add rax, 64
+    cmp rax, rcx
+    jb .loop
+    ret
+
 Read_64x2:
     xor rax, rax
 	align 64
 .loop:
     vmovdqu64 zmm0, [rdx]
     vmovdqu64 zmm0, [rdx + 64]
-    add rax, 64
+    add rax, 128
+    cmp rax, rcx
+    jb .loop
+    ret
+
+Read_64x3:
+    xor rax, rax
+	align 64
+.loop:
+    vmovdqu64 zmm0, [rdx]
+    vmovdqu64 zmm0, [rdx + 64]
+    vmovdqu64 zmm0, [rdx + 128]
+    add rax, 192
+    cmp rax, rcx
+    jb .loop
+    ret
+
+Read_64x4:
+    xor rax, rax
+	align 64
+.loop:
+    vmovdqu64 zmm0, [rdx]
+    vmovdqu64 zmm0, [rdx + 64]
+    vmovdqu64 zmm0, [rdx + 128]
+    vmovdqu64 zmm0, [rdx + 192]
+    add rax, 256
     cmp rax, rcx
     jb .loop
     ret
